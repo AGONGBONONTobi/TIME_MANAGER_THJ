@@ -19,22 +19,17 @@ defmodule TimeManager.Clocking do
   def list_clocks(user_id) do
     Clock
     |> where([c], c.user_id == ^user_id)
-    |> order_by([c], desc: c.time)
+    |> order_by([c], desc: c.id)     # ← id au lieu de time
     |> Repo.all()
   end
 
-  @doc """
-  Récupère le dernier clock d'un utilisateur.
-  Retourne `nil` s'il n'y en a aucun.
-  """
   def get_last_clock(user_id) do
     Clock
     |> where([c], c.user_id == ^user_id)
-    |> order_by([c], desc: c.time)
+    |> order_by([c], desc: c.id)     # ← id au lieu de time
     |> limit(1)
     |> Repo.one()
   end
-
   @doc """
   Crée un nouveau clock pour un utilisateur.
 

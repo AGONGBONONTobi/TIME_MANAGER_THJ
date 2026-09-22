@@ -3,7 +3,6 @@ defmodule TimeManagerWeb.UserControllerTest do
 
   import TimeManager.AccountsFixtures
 
-  alias TimeManager.Accounts.User
 
   @create_attrs %{
     username: "some username",

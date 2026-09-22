@@ -8,12 +8,16 @@ defmodule TimeManagerWeb.Router do
   scope "/api", TimeManagerWeb do
     pipe_through :api
     scope "/users" do
-      
+
       get "/", UserController, :index
       post "/", UserController, :create
       get "/:userID", UserController, :show
       put "/:userID", UserController, :update
       delete "/:userID", UserController, :delete
+    end
+    scope "/clocks" do
+      get "/:userID", ClockController, :index
+      post "/:userID", ClockController, :create
     end
   end
 

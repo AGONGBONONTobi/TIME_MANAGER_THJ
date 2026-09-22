@@ -2,19 +2,29 @@ defmodule TimeManagerWeb.Router do
   use TimeManagerWeb, :router
 
   pipeline :api do
-    plug :accepts, ["json"]
+    plug(:accepts, ["json"])
   end
 
   scope "/api", TimeManagerWeb do
-    pipe_through :api
+    pipe_through(:api)
+
     scope "/users" do
-      
-      get "/", UserController, :index
-      post "/", UserController, :create
-      get "/:userID", UserController, :show
-      put "/:userID", UserController, :update
-      delete "/:userID", UserController, :delete
+      get("/", UserController, :index)
+      post("/", UserController, :create)
+      get("/:userID", UserController, :show)
+      put("/:userID", UserController, :update)
+      delete("/:userID", UserController, :delete)
     end
+
+    scope "/workingtime" do
+      get("/:user_id", WorkingTimeController, :index)
+      get("/:user_id/:id", WorkingTimeController, :show)
+      post("/:user_id", WorkingTimeController, :create)
+      put("/:id", WorkingTimeController, :update)
+      delete("/:id", WorkingTimeController, :delete)
+    end
+
+    resources("/clocks", ClockController, except: [:new, :edit])
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
@@ -27,10 +37,10 @@ defmodule TimeManagerWeb.Router do
     import Phoenix.LiveDashboard.Router
 
     scope "/dev" do
-      pipe_through [:fetch_session, :protect_from_forgery]
+      pipe_through([:fetch_session, :protect_from_forgery])
 
-      live_dashboard "/dashboard", metrics: TimeManagerWeb.Telemetry
-      forward "/mailbox", Plug.Swoosh.MailboxPreview
+      live_dashboard("/dashboard", metrics: TimeManagerWeb.Telemetry)
+      forward("/mailbox", Plug.Swoosh.MailboxPreview)
     end
   end
 end

@@ -4,8 +4,8 @@ defmodule TimeManagerWeb.WorkingTimeJSON do
   @doc """
   Renders a list of workingtimes.
   """
-  def index(%{workingtimes: workingtimes}) do
-    %{data: for(working_time <- workingtimes, do: data(working_time))}
+  def index(%{working_times: working_times}) do
+    %{data: Enum.map(working_times, &data/1)}
   end
 
   @doc """
@@ -18,8 +18,13 @@ defmodule TimeManagerWeb.WorkingTimeJSON do
   defp data(%WorkingTime{} = working_time) do
     %{
       id: working_time.id,
-      start: working_time.start,
-      end: working_time.end
+      start: working_time.start_at,
+      end: working_time.end_at,
+      user_id: working_time.user_id
     }
+  end
+
+  def error(%{changeset: changeset}) do
+    %{errors: Ecto.Changeset.traverse_errors(changeset, fn {msg, _opts} -> msg end)}
   end
 end

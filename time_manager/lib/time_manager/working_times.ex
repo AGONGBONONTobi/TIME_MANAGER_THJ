@@ -101,4 +101,72 @@ defmodule TimeManager.WorkingTimes do
   def change_working_time(%WorkingTime{} = working_time, attrs \\ %{}) do
     WorkingTime.changeset(working_time, attrs)
   end
+
+  # ─── Query functions for routes ────────────────────────────────
+
+  def list_for_user(user_id, start_iso \\ nil, end_iso \\ nil) do
+    WorkingTime
+    |> where([w], w.user_id == ^user_id)
+    |> filter_by_start(start_iso)
+    |> filter_by_end(end_iso)
+    |> order_by([w], desc: w.start_at)
+    |> Repo.all()
+  end
+
+  def get_for_user!(user_id, id) do
+    Repo.get_by!(WorkingTime, id: id, user_id: user_id)
+  end
+
+  # ─── Clock logic ───────────────────────────────────────────────
+
+  def clock_in(user_id) do
+    if open_session?(user_id) do
+      {:error, :already_clocked_in}
+    else
+      %WorkingTime{}
+      |> WorkingTime.changeset(%{user_id: user_id, start_at: now()})
+      |> Repo.insert()
+    end
+  end
+
+  def clock_out(user_id) do
+    case open_session(user_id) do
+      nil -> {:error, :not_clocked_in}
+      wt -> wt |> WorkingTime.changeset(%{end_at: now()}) |> Repo.update()
+    end
+  end
+
+  def open_session(user_id) do
+    Repo.one(
+      from(w in WorkingTime,
+        where: w.user_id == ^user_id and is_nil(w.end_at),
+        order_by: [desc: w.start_at],
+        limit: 1
+      )
+    )
+  end
+
+  # ─── Private helpers ───────────────────────────────────────────
+
+  defp open_session?(user_id), do: not is_nil(open_session(user_id))
+
+  defp now, do: DateTime.utc_now() |> DateTime.truncate(:second)
+
+  defp filter_by_start(q, nil), do: q
+
+  defp filter_by_start(q, iso) do
+    case DateTime.from_iso8601(iso) do
+      {:ok, dt, _} -> where(q, [w], w.start_at >= ^dt)
+      _ -> q
+    end
+  end
+
+  defp filter_by_end(q, nil), do: q
+
+  defp filter_by_end(q, iso) do
+    case DateTime.from_iso8601(iso) do
+      {:ok, dt, _} -> where(q, [w], w.start_at <= ^dt)
+      _ -> q
+    end
+  end
 end

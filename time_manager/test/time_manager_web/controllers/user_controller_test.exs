@@ -7,11 +7,11 @@ defmodule TimeManagerWeb.UserControllerTest do
 
   @create_attrs %{
     username: "some username",
-    email: "some email"
+    email: "someemail@gmail.com"
   }
   @update_attrs %{
     username: "some updated username",
-    email: "some updated email"
+    email: "someupdatedemail@gmail.com"
   }
   @invalid_attrs %{username: nil, email: nil}
 
@@ -27,8 +27,8 @@ defmodule TimeManagerWeb.UserControllerTest do
   end
 
   describe "show user" do
-    setup [:create_user] do
-      %{:ok, user} = Accounts.create_user(%{username:"Tobi", "email":test@gmail.com})
+    setup do
+      {:ok, %User{} = user} = TimeManager.Accounts.create_user(%{username: "Tobi", email: "test@gmail.com"})
       %{user: user}
     end
 
@@ -36,7 +36,10 @@ defmodule TimeManagerWeb.UserControllerTest do
       conn = get(conn, ~p"/api/users/#{user.id}")
       assert %{"id" => id} = json_response(conn, 200)["data"]
     end
-    test "render errors when user not found", %{conn: conn, user:user} do 
+    test "render errors when user not found", %{conn: conn, user: user} do 
+      conn = get(conn, ~p"/api/users/258")
+      assert json_response(conn, 404)["error"] == "User not found"
+    end
   end
 
   describe "create user" do
@@ -48,14 +51,14 @@ defmodule TimeManagerWeb.UserControllerTest do
 
       assert %{
                "id" => ^id,
-               "email" => "some email",
+               "email" => "someemail@gmail.com",
                "username" => "some username"
              } = json_response(conn, 200)["data"]
     end
 
     test "renders errors when data is invalid", %{conn: conn} do
       conn = post(conn, ~p"/api/users", user: @invalid_attrs)
-      assert json_response(conn, 422)["errors"] != %{}
+      assert json_response(conn, 400)["error"] != %{}
     end
   end
 
@@ -70,14 +73,14 @@ defmodule TimeManagerWeb.UserControllerTest do
 
       assert %{
                "id" => ^id,
-               "email" => "some updated email",
+               "email" => "someupdatedemail@gmail.com",
                "username" => "some updated username"
              } = json_response(conn, 200)["data"]
     end
 
     test "renders errors when data is invalid", %{conn: conn, user: user} do
       conn = put(conn, ~p"/api/users/#{user}", user: @invalid_attrs)
-      assert json_response(conn, 422)["errors"] != %{}
+      assert json_response(conn, 400)["error"] != %{}
     end
   end
 
@@ -88,9 +91,8 @@ defmodule TimeManagerWeb.UserControllerTest do
       conn = delete(conn, ~p"/api/users/#{user}")
       assert response(conn, 204)
 
-      assert_error_sent 404, fn ->
-        get(conn, ~p"/api/users/#{user}")
-      end
+      conn = get(conn, ~p"/api/users/#{user}")
+      assert json_response(conn, 404)["error"] != %{}
     end
   end
 

@@ -2,12 +2,12 @@ defmodule TimeManagerWeb.UserController do
   use TimeManagerWeb, :controller
 
   alias TimeManager.Accounts
-  alias TimeManager.Accounts.User
 
   action_fallback TimeManagerWeb.FallbackController
 
   def index(conn, params) do
     users = Accounts.get_users_by_filters(params)
+
     conn
     |> put_status(200)
     |> render(:index, users: users)
@@ -72,7 +72,7 @@ defmodule TimeManagerWeb.UserController do
 
       user ->
         Accounts.delete_user(user)
-        send_resp(conn, :no_content, "")   
+        send_resp(conn, :no_content, "")
     end
   end
 end

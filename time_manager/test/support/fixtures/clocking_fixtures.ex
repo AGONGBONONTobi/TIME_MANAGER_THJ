@@ -8,13 +8,20 @@ defmodule TimeManager.ClockingFixtures do
   Generate a clock.
   """
   def clock_fixture(attrs \\ %{}) do
-    {:ok, clock} =
-      attrs
-      |> Enum.into(%{
-        status: true,
-        time: ~N[2026-09-20 13:08:00]
+    {:ok, user} =
+      TimeManager.Accounts.create_user(%{
+        username: "clock-fixture-#{System.unique_integer([:positive])}",
+        email: "clock-fixture-#{System.unique_integer([:positive])}@example.com"
       })
-      |> TimeManager.Clocking.create_clock()
+
+    {:ok, _arrival} = TimeManager.Clocking.create_clock(user.id)
+    {:ok, clock} = TimeManager.Clocking.create_clock(user.id)
+
+    clock = %{
+      clock
+      | status: Map.get(attrs, :status, clock.status),
+        time: Map.get(attrs, :time, clock.time)
+    }
 
     clock
   end

@@ -17,18 +17,25 @@ defmodule TimeManagerWeb.Router do
     end
 
     scope "/workingtime" do
-      get("/:user_id", WorkingTimeController, :index)
-      get("/:user_id/:id", WorkingTimeController, :show)
-      post("/:user_id", WorkingTimeController, :create)
+      get("/:userID", WorkingTimeController, :index)
+      get("/:userID/:id", WorkingTimeController, :show)
+      post("/:userID", WorkingTimeController, :create)
       put("/:id", WorkingTimeController, :update)
       delete("/:id", WorkingTimeController, :delete)
     end
+<<<<<<< HEAD
 
     # resources("/clocks", ClockController, except: [:new, :edit])
     scope "/clocks" do
       get("/:userID", ClockController, :index)
       post("/:userID", ClockController, :create)
     end
+=======
+    scope "/clocks" do
+      get "/:userID", ClockController, :index
+      post "/:userID", ClockController, :create
+     end
+>>>>>>> 484882835ad6be6d41c9858b5b1540a43d6788c0
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development

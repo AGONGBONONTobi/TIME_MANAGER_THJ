@@ -1,88 +1,40 @@
 defmodule TimeManagerWeb.WorkingTimeControllerTest do
   use TimeManagerWeb.ConnCase
 
-  import TimeManager.WorkingTimesFixtures
-
-  alias TimeManager.WorkingTimes.WorkingTime
-
-  @create_attrs %{
-    start: ~N[2026-09-20 13:09:00],
-    end: ~N[2026-09-20 13:09:00]
-  }
-  @update_attrs %{
-    start: ~N[2026-09-21 13:09:00],
-    end: ~N[2026-09-21 13:09:00]
-  }
-  @invalid_attrs %{start: nil, end: nil}
+  alias TimeManager.Accounts
 
   setup %{conn: conn} do
-    {:ok, conn: put_req_header(conn, "accept", "application/json")}
+    {:ok, user} =
+      Accounts.create_user(%{username: "api-working-user", email: "api-working@example.com"})
+
+    {:ok, conn: put_req_header(conn, "accept", "application/json"), user: user}
   end
 
-  describe "index" do
-    test "lists all workingtimes", %{conn: conn} do
-      conn = get(conn, ~p"/api/workingtimes")
-      assert json_response(conn, 200)["data"] == []
-    end
+  test "workingtime CRUD uses the required routes", %{conn: conn, user: user} do
+    attrs = %{
+      "working_time" => %{"start" => "2026-09-20T13:09:00Z", "end" => "2026-09-20T17:09:00Z"}
+    }
+
+    created = post(conn, "/api/workingtime/#{user.id}", attrs)
+    assert %{"id" => id, "user_id" => user_id} = json_response(created, 201)["data"]
+    assert user_id == user.id
+
+    listed = get(conn, "/api/workingtime/#{user.id}")
+    assert [%{"id" => ^id}] = json_response(listed, 200)["data"]
+
+    updated =
+      put(conn, "/api/workingtime/#{id}", %{"working_time" => %{"end" => "2026-09-20T18:00:00Z"}})
+
+    assert %{"id" => ^id, "end" => "2026-09-20T18:00:00Z"} = json_response(updated, 200)["data"]
+
+    assert response(delete(conn, "/api/workingtime/#{id}"), 204) == ""
+    assert response(get(conn, "/api/workingtime/#{user.id}/#{id}"), 404) == ""
   end
 
-  describe "create working_time" do
-    test "renders working_time when data is valid", %{conn: conn} do
-      conn = post(conn, ~p"/api/workingtimes", working_time: @create_attrs)
-      assert %{"id" => id} = json_response(conn, 201)["data"]
+  test "workingtime rejects a second open session", %{conn: conn, user: user} do
+    assert response(post(conn, "/api/workingtime/#{user.id}"), 201)
 
-      conn = get(conn, ~p"/api/workingtimes/#{id}")
-
-      assert %{
-               "id" => ^id,
-               "end" => "2026-09-20T13:09:00",
-               "start" => "2026-09-20T13:09:00"
-             } = json_response(conn, 200)["data"]
-    end
-
-    test "renders errors when data is invalid", %{conn: conn} do
-      conn = post(conn, ~p"/api/workingtimes", working_time: @invalid_attrs)
-      assert json_response(conn, 422)["errors"] != %{}
-    end
-  end
-
-  describe "update working_time" do
-    setup [:create_working_time]
-
-    test "renders working_time when data is valid", %{conn: conn, working_time: %WorkingTime{id: id} = working_time} do
-      conn = put(conn, ~p"/api/workingtimes/#{working_time}", working_time: @update_attrs)
-      assert %{"id" => ^id} = json_response(conn, 200)["data"]
-
-      conn = get(conn, ~p"/api/workingtimes/#{id}")
-
-      assert %{
-               "id" => ^id,
-               "end" => "2026-09-21T13:09:00",
-               "start" => "2026-09-21T13:09:00"
-             } = json_response(conn, 200)["data"]
-    end
-
-    test "renders errors when data is invalid", %{conn: conn, working_time: working_time} do
-      conn = put(conn, ~p"/api/workingtimes/#{working_time}", working_time: @invalid_attrs)
-      assert json_response(conn, 422)["errors"] != %{}
-    end
-  end
-
-  describe "delete working_time" do
-    setup [:create_working_time]
-
-    test "deletes chosen working_time", %{conn: conn, working_time: working_time} do
-      conn = delete(conn, ~p"/api/workingtimes/#{working_time}")
-      assert response(conn, 204)
-
-      assert_error_sent 404, fn ->
-        get(conn, ~p"/api/workingtimes/#{working_time}")
-      end
-    end
-  end
-
-  defp create_working_time(_) do
-    working_time = working_time_fixture()
-    %{working_time: working_time}
+    response = post(conn, "/api/workingtime/#{user.id}")
+    assert json_response(response, 409)["error"] == "already clocked in"
   end
 end

@@ -2,7 +2,6 @@ defmodule TimeManagerWeb.UserControllerTest do
   use TimeManagerWeb.ConnCase
 
   import TimeManager.AccountsFixtures
-
   alias TimeManager.Accounts.User
 
   @create_attrs %{
@@ -28,15 +27,18 @@ defmodule TimeManagerWeb.UserControllerTest do
 
   describe "show user" do
     setup do
-      {:ok, %User{} = user} = TimeManager.Accounts.create_user(%{username: "Tobi", email: "test@gmail.com"})
+      {:ok, %User{} = user} =
+        TimeManager.Accounts.create_user(%{username: "Tobi", email: "test@example.com"})
+
       %{user: user}
     end
 
     test "renders user when id data is valid", %{conn: conn, user: user} do
       conn = get(conn, ~p"/api/users/#{user.id}")
-      assert %{"id" => id} = json_response(conn, 200)["data"]
+      assert %{"id" => _id} = json_response(conn, 200)["data"]
     end
-    test "render errors when user not found", %{conn: conn, user: user} do 
+
+    test "render errors when user not found", %{conn: conn} do
       conn = get(conn, ~p"/api/users/258")
       assert json_response(conn, 404)["error"] == "User not found"
     end

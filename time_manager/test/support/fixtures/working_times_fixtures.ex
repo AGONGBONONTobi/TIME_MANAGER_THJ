@@ -8,11 +8,18 @@ defmodule TimeManager.WorkingTimesFixtures do
   Generate a working_time.
   """
   def working_time_fixture(attrs \\ %{}) do
+    {:ok, user} =
+      TimeManager.Accounts.create_user(%{
+        username: "working-fixture-#{System.unique_integer([:positive])}",
+        email: "working-fixture-#{System.unique_integer([:positive])}@example.com"
+      })
+
     {:ok, working_time} =
       attrs
       |> Enum.into(%{
-        end: ~N[2026-09-20 13:09:00],
-        start: ~N[2026-09-20 13:09:00]
+        end: ~U[2026-09-20 13:09:00Z],
+        start: ~U[2026-09-20 12:09:00Z],
+        user_id: user.id
       })
       |> TimeManager.WorkingTimes.create_working_time()
 

@@ -16,60 +16,70 @@ defmodule TimeManager.WorkingTimes do
 
   def get_working_time(id), do: Repo.get(WorkingTime, id)
 
-  # ⬇️ FONCTIONS AJOUTÉES POUR LE CONTRÔLEUR
+  def get_for_user!(user_id, id), do: Repo.get_by!(WorkingTime, id: id, user_id: user_id)
 
-  @doc """
-  Récupère un workingtime d'un user précis.
-  Raise si pas trouvé.
-  """
-  def get_for_user!(user_id, id) do
+  def get_for_user(user_id, id), do: Repo.get_by(WorkingTime, id: id, user_id: user_id)
+
+  def list_for_user(user_id, start_date \\ nil, end_date \\ nil) do
     WorkingTime
-    |> where([w], w.id == ^id and w.user_id == ^user_id)
-    |> Repo.one!()
+    |> where([w], w.user_id == ^user_id)
+    |> filter_by_start(start_date)
+    |> filter_by_end(end_date)
+    |> order_by([w], desc: w.start)
+    |> Repo.all()
   end
 
-  @doc """
-  Liste les workingtimes d'un user, filtrés par plage de dates.
-  """
-  defp parse_datetime(str) do
-    # Remplace l'espace par T pour ISO 8601
-    str_normalized = String.replace(str, " ", "T")
-
-    case NaiveDateTime.from_iso8601(str_normalized) do
-      {:ok, dt} -> dt
-      _ -> nil
+  def create_for_user(user_id, attrs) do
+    case Repo.get(TimeManager.Accounts.User, user_id) do
+      nil -> {:error, :user_not_found}
+      _user -> create_working_time(Map.put(attrs, "user_id", user_id))
     end
   end
 
-  def list_for_user(user_id, start_date \\ nil, end_date \\ nil) do
-    query = from w in WorkingTime, where: w.user_id == ^user_id
+  def start_session(user_id) do
+    case Repo.get(TimeManager.Accounts.User, user_id) do
+      nil ->
+        {:error, :user_not_found}
 
-    query =
-      case start_date && parse_datetime(start_date) do
-        nil -> query
-        dt -> where(query, [w], w.start_at >= ^dt)
-      end
-
-    query =
-      case end_date && parse_datetime(end_date) do
-        nil -> query
-        dt -> where(query, [w], w.end_at <= ^dt)
-      end
-
-    Repo.all(query)
-  end
-  @doc """
-  Enregistre un nouveau workingtime (clock in).
-  Crée un workingtime avec start_at = maintenant.
-  """
-  def clock_in(user_id) do
-    create_working_time(%{
-      "user_id" => user_id,
-      "start_at" => NaiveDateTime.utc_now()
-    })
+      _user ->
+        if open_session(user_id) do
+          {:error, :already_clocked_in}
+        else
+          create_working_time(%{
+            "user_id" => user_id,
+            "start" => DateTime.utc_now() |> DateTime.truncate(:second)
+          })
+        end
+    end
   end
 
-  # ⬆️ FIN DES AJOUTS
+  def open_session(user_id) do
+    Repo.one(
+      from w in WorkingTime,
+        where: w.user_id == ^user_id and is_nil(w.end),
+        order_by: [desc: w.start],
+        limit: 1
+    )
+  end
+
+  defp filter_by_start(query, nil), do: query
+  defp filter_by_start(query, value), do: filter_datetime(query, :start, value, :>=)
+
+  defp filter_by_end(query, nil), do: query
+  defp filter_by_end(query, value), do: filter_datetime(query, :start, value, :<=)
+
+  defp filter_datetime(query, field, value, operator) do
+    case DateTime.from_iso8601(String.replace(value, " ", "T")) do
+      {:ok, datetime, _offset} when operator == :>= ->
+        where(query, [w], field(w, ^field) >= ^datetime)
+
+      {:ok, datetime, _offset} when operator == :<= ->
+        where(query, [w], field(w, ^field) <= ^datetime)
+
+      _ ->
+        query
+    end
+  end
 
   def create_working_time(attrs \\ %{}) do
     %WorkingTime{}

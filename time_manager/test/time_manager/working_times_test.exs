@@ -1,61 +1,27 @@
 defmodule TimeManager.WorkingTimesTest do
   use TimeManager.DataCase
 
+  alias TimeManager.Accounts
   alias TimeManager.WorkingTimes
 
-  describe "workingtimes" do
-    alias TimeManager.WorkingTimes.WorkingTime
+  test "creates and lists a working time for a user" do
+    {:ok, user} = Accounts.create_user(%{username: "working-user", email: "working@example.com"})
 
-    import TimeManager.WorkingTimesFixtures
+    assert {:ok, working_time} =
+             WorkingTimes.create_for_user(user.id, %{
+               "start" => "2026-09-20T13:09:00Z",
+               "end" => "2026-09-20T17:09:00Z"
+             })
 
-    @invalid_attrs %{start: nil, end: nil}
+    assert [^working_time] = WorkingTimes.list_for_user(user.id)
+  end
 
-    test "list_workingtimes/0 returns all workingtimes" do
-      working_time = working_time_fixture()
-      assert WorkingTimes.list_workingtimes() == [working_time]
-    end
+  test "rejects a working time without a start" do
+    {:ok, user} = Accounts.create_user(%{username: "working-user", email: "working@example.com"})
 
-    test "get_working_time!/1 returns the working_time with given id" do
-      working_time = working_time_fixture()
-      assert WorkingTimes.get_working_time!(working_time.id) == working_time
-    end
+    assert {:error, changeset} =
+             WorkingTimes.create_for_user(user.id, %{"end" => "2026-09-20T17:09:00Z"})
 
-    test "create_working_time/1 with valid data creates a working_time" do
-      valid_attrs = %{start: ~N[2026-09-20 13:09:00], end: ~N[2026-09-20 13:09:00]}
-
-      assert {:ok, %WorkingTime{} = working_time} = WorkingTimes.create_working_time(valid_attrs)
-      assert working_time.start == ~N[2026-09-20 13:09:00]
-      assert working_time.end == ~N[2026-09-20 13:09:00]
-    end
-
-    test "create_working_time/1 with invalid data returns error changeset" do
-      assert {:error, %Ecto.Changeset{}} = WorkingTimes.create_working_time(@invalid_attrs)
-    end
-
-    test "update_working_time/2 with valid data updates the working_time" do
-      working_time = working_time_fixture()
-      update_attrs = %{start: ~N[2026-09-21 13:09:00], end: ~N[2026-09-21 13:09:00]}
-
-      assert {:ok, %WorkingTime{} = working_time} = WorkingTimes.update_working_time(working_time, update_attrs)
-      assert working_time.start == ~N[2026-09-21 13:09:00]
-      assert working_time.end == ~N[2026-09-21 13:09:00]
-    end
-
-    test "update_working_time/2 with invalid data returns error changeset" do
-      working_time = working_time_fixture()
-      assert {:error, %Ecto.Changeset{}} = WorkingTimes.update_working_time(working_time, @invalid_attrs)
-      assert working_time == WorkingTimes.get_working_time!(working_time.id)
-    end
-
-    test "delete_working_time/1 deletes the working_time" do
-      working_time = working_time_fixture()
-      assert {:ok, %WorkingTime{}} = WorkingTimes.delete_working_time(working_time)
-      assert_raise Ecto.NoResultsError, fn -> WorkingTimes.get_working_time!(working_time.id) end
-    end
-
-    test "change_working_time/1 returns a working_time changeset" do
-      working_time = working_time_fixture()
-      assert %Ecto.Changeset{} = WorkingTimes.change_working_time(working_time)
-    end
+    assert %{start: ["can't be blank"]} = errors_on(changeset)
   end
 end

@@ -13,39 +13,28 @@ defmodule TimeManagerWeb.WorkingTimeController do
 
   # GET /api/workingtime/:userID/:id
   def show(conn, %{"userID" => user_id, "id" => id}) do
-    case WorkingTimes.get_for_user!(user_id, id) do
-      working_time ->
-        conn
-        |> put_status(200)
-        |> render(:show, working_time: working_time)
+    case WorkingTimes.get_for_user(user_id, id) do
+      nil -> send_resp(conn, :not_found, "")
+      working_time -> render(conn, :show, working_time: working_time)
     end
-  rescue
-    Ecto.NoResultsError ->
-      conn
-      |> put_status(404)
-      |> json(%{error: "WorkingTime not found"})
   end
 
-  # POST /api/workingtime/:userID  → clock in
   # POST /api/workingtime/:userID
-  def create(conn, %{"userID" => user_id} = params) do
-    # Prend les champs du body si présents, sinon utilise "maintenant"
-    attrs = %{
-      "user_id" => user_id,
-      "start_at" => params["workingtime"]["start_at"] || NaiveDateTime.utc_now(),
-      "end_at" => params["workingtime"]["end_at"]
-    }
-
-    case WorkingTimes.create_working_time(attrs) do
+  def create(conn, %{"userID" => user_id}) do
+    case WorkingTimes.start_session(user_id) do
       {:ok, wt} ->
         conn
         |> put_status(201)
         |> render(:show, working_time: wt)
 
+      {:error, :user_not_found} ->
+        send_resp(conn, :not_found, "")
+
+      {:error, :already_clocked_in} ->
+        conn |> put_status(:conflict) |> json(%{error: "already clocked in"})
+
       {:error, changeset} ->
-        conn
-        |> put_status(400)
-        |> json(%{error: "Bad request", details: changeset})
+        conn |> put_status(:unprocessable_entity) |> render(:error, changeset: changeset)
     end
   end
 
@@ -58,7 +47,14 @@ defmodule TimeManagerWeb.WorkingTimeController do
         |> json(%{error: "WorkingTime not found"})
 
       working_time ->
-        attrs = Map.take(params, ["start_at", "end_at"])
+        attrs = params |> Map.get("working_time", params) |> Map.take(["start", "end", "end_at"])
+
+        attrs =
+          if Map.has_key?(attrs, "end_at"),
+            do: Map.put(attrs, "end", attrs["end_at"]),
+            else: attrs
+
+        attrs = Map.delete(attrs, "end_at")
 
         case WorkingTimes.update_working_time(working_time, attrs) do
           {:ok, wt} ->
@@ -67,9 +63,7 @@ defmodule TimeManagerWeb.WorkingTimeController do
             |> render(:show, working_time: wt)
 
           {:error, changeset} ->
-            conn
-            |> put_status(400)
-            |> json(%{error: "Bad request", details: changeset})
+            conn |> put_status(:unprocessable_entity) |> render(:error, changeset: changeset)
         end
     end
   end

@@ -19,11 +19,21 @@ defmodule TimeManagerWeb.ClockController do
   Crée un nouveau clock (arrivée ou départ) pour l'utilisateur.
   """
   def create(conn, %{"userID" => user_id}) do
-    with {:ok, clock} <- Clocking.create_clock(user_id) do
-      conn
-      |> put_status(:created)
-      |> put_resp_header("location", ~p"/api/clocks/#{clock.user_id}")
-      |> render(:show, clock: clock)
+    case Clocking.create_clock(user_id) do
+      {:ok, clock} ->
+        conn
+        |> put_status(:created)
+        |> put_resp_header("location", ~p"/api/clocks/#{clock.user_id}")
+        |> render(:show, clock: clock)
+
+      {:error, :user_not_found} ->
+        send_resp(conn, :not_found, "")
+
+      {:error, :already_clocked_in} ->
+        conn |> put_status(:conflict) |> json(%{error: "already clocked in"})
+
+      {:error, :not_clocked_in} ->
+        conn |> put_status(:unprocessable_entity) |> json(%{error: "not clocked in"})
     end
   end
 end

@@ -62,6 +62,12 @@ defmodule TimeManager.WorkingTimes do
     )
   end
 
+  def get_by_clock_time(user_id, time, true),
+    do: Repo.get_by(WorkingTime, user_id: user_id, start: time)
+
+  def get_by_clock_time(user_id, time, false),
+    do: Repo.get_by(WorkingTime, user_id: user_id, end: time)
+
   defp filter_by_start(query, nil), do: query
   defp filter_by_start(query, value), do: filter_datetime(query, :start, value, :>=)
 

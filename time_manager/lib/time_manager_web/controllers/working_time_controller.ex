@@ -2,6 +2,7 @@ defmodule TimeManagerWeb.WorkingTimeController do
   use TimeManagerWeb, :controller
 
   alias TimeManager.WorkingTimes
+  alias TimeManager.Clocking
 
   action_fallback(TimeManagerWeb.FallbackController)
 
@@ -21,17 +22,22 @@ defmodule TimeManagerWeb.WorkingTimeController do
 
   # POST /api/workingtime/:userID
   def create(conn, %{"userID" => user_id}) do
-    case WorkingTimes.start_session(user_id) do
-      {:ok, wt} ->
+    case Clocking.create_clock(user_id) do
+      {:ok, clock} ->
+        working_time = WorkingTimes.get_by_clock_time(user_id, clock.time, clock.status)
+
         conn
         |> put_status(201)
-        |> render(:show, working_time: wt)
+        |> render(:show, working_time: working_time)
 
       {:error, :user_not_found} ->
         send_resp(conn, :not_found, "")
 
       {:error, :already_clocked_in} ->
         conn |> put_status(:conflict) |> json(%{error: "already clocked in"})
+
+      {:error, :not_clocked_in} ->
+        conn |> put_status(:unprocessable_entity) |> json(%{error: "not clocked in"})
 
       {:error, changeset} ->
         conn |> put_status(:unprocessable_entity) |> render(:error, changeset: changeset)

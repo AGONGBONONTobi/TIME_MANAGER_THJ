@@ -11,19 +11,16 @@ defmodule TimeManagerWeb.WorkingTimeControllerTest do
   end
 
   test "workingtime CRUD uses the required routes", %{conn: conn, user: user} do
-    attrs = %{
-      "working_time" => %{"start" => "2026-09-20T13:09:00Z", "end" => "2026-09-20T17:09:00Z"}
-    }
-
-    created = post(conn, "/api/workingtime/#{user.id}", attrs)
+    created = post(conn, "/api/workingtime/#{user.id}")
     assert %{"id" => id, "user_id" => user_id} = json_response(created, 201)["data"]
     assert user_id == user.id
+    assert json_response(created, 201)["data"]["end"] == nil
 
     listed = get(conn, "/api/workingtime/#{user.id}")
     assert [%{"id" => ^id}] = json_response(listed, 200)["data"]
 
     updated =
-      put(conn, "/api/workingtime/#{id}", %{"working_time" => %{"end" => "2026-09-20T18:00:00Z"}})
+      put(conn, "/api/workingtime/#{id}", %{"end_at" => "2026-09-20T18:00:00Z"})
 
     assert %{"id" => ^id, "end" => "2026-09-20T18:00:00Z"} = json_response(updated, 200)["data"]
 
@@ -31,10 +28,13 @@ defmodule TimeManagerWeb.WorkingTimeControllerTest do
     assert response(get(conn, "/api/workingtime/#{user.id}/#{id}"), 404) == ""
   end
 
-  test "workingtime rejects a second open session", %{conn: conn, user: user} do
-    assert response(post(conn, "/api/workingtime/#{user.id}"), 201)
+  test "workingtime POST uses the clock arrival/departure workflow", %{conn: conn, user: user} do
+    arrival = post(conn, "/api/workingtime/#{user.id}")
+    assert response(arrival, 201)
+    assert json_response(arrival, 201)["data"]["end"] == nil
 
-    response = post(conn, "/api/workingtime/#{user.id}")
-    assert json_response(response, 409)["error"] == "already clocked in"
+    departure = post(conn, "/api/workingtime/#{user.id}")
+    assert response(departure, 201)
+    assert json_response(departure, 201)["data"]["end"] != nil
   end
 end

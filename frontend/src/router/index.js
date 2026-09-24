@@ -12,25 +12,25 @@ const routes = [
     props: true
   },
   {
-    path: '/workingTime/:userid',
+    path: '/workingTime/:userID',
     name: 'workingTimeCreate',
     component: WorkingTime,
     props: true
   },
   {
-    path: '/workingTime/:userid/:workingtimeid',
+    path: '/workingTime/:userID/:workingTimeID',
     name: 'workingTimeEdit',
     component: WorkingTime,
     props: true
   },
   {
-    path: '/clock/:userid',
+    path: '/clock/:userID',
     name: 'clock',
     component: ClockManager,
     props: true
   },
   {
-    path: '/chartManager/:userid',
+    path: '/chartManager/:userID',
     name: 'chartManager',
     component: ChartManager,
     props: true
@@ -38,8 +38,7 @@ const routes = [
   {
     path: '/user',
     name: 'user',
-    component: User,
-    props: true
+    component: User
   }
 ]
 

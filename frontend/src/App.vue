@@ -58,7 +58,7 @@ export default {
             <li class="nav-item">
               <router-link
                 class="nav-link"
-                :to="{ name: 'clockManager', params: { userID: currentUserId } }"
+                :to="{ name: 'clock', params: { userID: currentUserId } }"
               >
                 ⏰ Clock
               </router-link>
@@ -84,7 +84,7 @@ export default {
         </div>
       </div>
     </nav>
-    
+
     <main class="container my-4">
       <router-view></router-view>
     </main>

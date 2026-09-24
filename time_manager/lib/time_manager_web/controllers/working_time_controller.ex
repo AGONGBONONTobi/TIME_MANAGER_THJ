@@ -2,7 +2,6 @@ defmodule TimeManagerWeb.WorkingTimeController do
   use TimeManagerWeb, :controller
 
   alias TimeManager.WorkingTimes
-  alias TimeManager.Clocking
 
   action_fallback(TimeManagerWeb.FallbackController)
 
@@ -15,36 +14,40 @@ defmodule TimeManagerWeb.WorkingTimeController do
   # GET /api/workingtime/:userID/:id
   def show(conn, %{"userID" => user_id, "id" => id}) do
     case WorkingTimes.get_for_user(user_id, id) do
-      nil -> send_resp(conn, :not_found, "")
-      working_time -> render(conn, :show, working_time: working_time)
+      nil ->
+        conn
+        |> put_status(404)
+        |> json(%{error: "WorkingTime not found"})
+
+      working_time ->
+        conn
+        |> put_status(200)
+        |> render(:show, working_time: working_time)
     end
   end
 
   # POST /api/workingtime/:userID
-  def create(conn, %{"userID" => user_id}) do
-    case Clocking.create_clock(user_id) do
-      {:ok, clock} ->
-        working_time = WorkingTimes.get_by_clock_time(user_id, clock.time, clock.status)
+  def create(conn, %{"userID" => user_id} = params) do
+    attrs =
+      params
+      |> Map.get("workingtime", params)
+      |> Map.take(["start", "end"])
+      |> Map.put("user_id", user_id)
 
+    case WorkingTimes.create_working_time(attrs) do
+      {:ok, wt} ->
         conn
         |> put_status(201)
-        |> render(:show, working_time: working_time)
-
-      {:error, :user_not_found} ->
-        send_resp(conn, :not_found, "")
-
-      {:error, :already_clocked_in} ->
-        conn |> put_status(:conflict) |> json(%{error: "already clocked in"})
-
-      {:error, :not_clocked_in} ->
-        conn |> put_status(:unprocessable_entity) |> json(%{error: "not clocked in"})
+        |> render(:show, working_time: wt)
 
       {:error, changeset} ->
-        conn |> put_status(:unprocessable_entity) |> render(:error, changeset: changeset)
+        conn
+        |> put_status(400)
+        |> json(%{error: "Bad request", details: changeset})
     end
   end
 
-  # PUT /api/workingtime/:id  → modifier
+  # PUT /api/workingtime/:id
   def update(conn, %{"id" => id} = params) do
     case WorkingTimes.get_working_time(id) do
       nil ->
@@ -53,14 +56,10 @@ defmodule TimeManagerWeb.WorkingTimeController do
         |> json(%{error: "WorkingTime not found"})
 
       working_time ->
-        attrs = params |> Map.get("working_time", params) |> Map.take(["start", "end", "end_at"])
-
         attrs =
-          if Map.has_key?(attrs, "end_at"),
-            do: Map.put(attrs, "end", attrs["end_at"]),
-            else: attrs
-
-        attrs = Map.delete(attrs, "end_at")
+          params
+          |> Map.get("workingtime", params)
+          |> Map.take(["start", "end"])
 
         case WorkingTimes.update_working_time(working_time, attrs) do
           {:ok, wt} ->
@@ -69,7 +68,9 @@ defmodule TimeManagerWeb.WorkingTimeController do
             |> render(:show, working_time: wt)
 
           {:error, changeset} ->
-            conn |> put_status(:unprocessable_entity) |> render(:error, changeset: changeset)
+            conn
+            |> put_status(400)
+            |> json(%{error: "Bad request", details: changeset})
         end
     end
   end

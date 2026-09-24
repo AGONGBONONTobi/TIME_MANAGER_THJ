@@ -9,39 +9,21 @@ defmodule TimeManager.Clocking do
   alias TimeManager.Accounts.User
   alias TimeManager.WorkingTimes.WorkingTime
 
-  @doc """
-  Liste tous les clocks d'un utilisateur, du plus récent au plus ancien.
-
-  ## Exemples
-
-      iex> list_clocks(1)
-      [%Clock{}, ...]
-  """
   def list_clocks(user_id) do
     Clock
     |> where([c], c.user_id == ^user_id)
-    |> order_by([c], desc: c.time)
+    |> order_by([c], desc: c.id)
     |> Repo.all()
   end
 
   def get_last_clock(user_id) do
     Clock
     |> where([c], c.user_id == ^user_id)
-    |> order_by([c], desc: c.time)
+    |> order_by([c], desc: c.id)
     |> limit(1)
     |> Repo.one()
   end
 
-  @doc """
-  Crée un nouveau clock pour un utilisateur.
-
-  Le `status` est déterminé automatiquement :
-  - `true` (arrivée / clock-in) si aucun clock précédent OU dernier = départ
-  - `false` (départ / clock-out) si dernier = arrivée
-
-  Le `time` est rempli avec l'heure UTC actuelle.
-  Lève `Ecto.NoResultsError` si l'utilisateur n'existe pas.
-  """
   def create_clock(user_id) do
     case Repo.get(User, user_id) do
       nil ->
@@ -67,6 +49,7 @@ defmodule TimeManager.Clocking do
     end
   end
 
+  # CLOCK IN : crée un workingtime si pas déjà en cours
   defp sync_working_time(repo, user_id, true, time) do
     if repo.exists?(from w in WorkingTime, where: w.user_id == ^user_id and is_nil(w.end)) do
       {:error, :already_clocked_in}
@@ -77,6 +60,7 @@ defmodule TimeManager.Clocking do
     end
   end
 
+  # CLOCK OUT : ferme le workingtime en cours
   defp sync_working_time(repo, user_id, false, time) do
     case repo.one(
            from w in WorkingTime,
@@ -84,8 +68,13 @@ defmodule TimeManager.Clocking do
              order_by: [desc: w.start],
              limit: 1
          ) do
-      nil -> {:error, :not_clocked_in}
-      working_time -> working_time |> WorkingTime.changeset(%{end: time}) |> repo.update()
+      nil ->
+        {:error, :not_clocked_in}
+
+      working_time ->
+        working_time
+        |> WorkingTime.changeset(%{end: time})
+        |> repo.update()
     end
   end
 

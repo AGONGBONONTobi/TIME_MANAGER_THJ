@@ -5,7 +5,6 @@ defmodule TimeManager.WorkingTimes do
 
   import Ecto.Query, warn: false
   alias TimeManager.Repo
-
   alias TimeManager.WorkingTimes.WorkingTime
 
   def list_workingtimes do
@@ -13,11 +12,9 @@ defmodule TimeManager.WorkingTimes do
   end
 
   def get_working_time!(id), do: Repo.get!(WorkingTime, id)
-
   def get_working_time(id), do: Repo.get(WorkingTime, id)
 
   def get_for_user!(user_id, id), do: Repo.get_by!(WorkingTime, id: id, user_id: user_id)
-
   def get_for_user(user_id, id), do: Repo.get_by(WorkingTime, id: id, user_id: user_id)
 
   def list_for_user(user_id, start_date \\ nil, end_date \\ nil) do
@@ -68,24 +65,44 @@ defmodule TimeManager.WorkingTimes do
   def get_by_clock_time(user_id, time, false),
     do: Repo.get_by(WorkingTime, user_id: user_id, end: time)
 
+  # ═══════════════════════════════════════════════════════
+  # FILTRES PAR DATE
+  # ═══════════════════════════════════════════════════════
+
   defp filter_by_start(query, nil), do: query
   defp filter_by_start(query, value), do: filter_datetime(query, :start, value, :>=)
 
   defp filter_by_end(query, nil), do: query
-  defp filter_by_end(query, value), do: filter_datetime(query, :start, value, :<=)
+  defp filter_by_end(query, value), do: filter_datetime(query, :end, value, :<=)
 
   defp filter_datetime(query, field, value, operator) do
-    case DateTime.from_iso8601(String.replace(value, " ", "T")) do
-      {:ok, datetime, _offset} when operator == :>= ->
-        where(query, [w], field(w, ^field) >= ^datetime)
+    value_normalized = String.replace(value, " ", "T")
 
-      {:ok, datetime, _offset} when operator == :<= ->
-        where(query, [w], field(w, ^field) <= ^datetime)
+    result =
+      case NaiveDateTime.from_iso8601(value_normalized) do
+        {:ok, naive_dt} ->
+          {:ok, naive_dt}
+
+        _ ->
+          case DateTime.from_iso8601(value_normalized) do
+            {:ok, dt, _offset} -> {:ok, DateTime.to_naive(dt)}
+            _ -> :error
+          end
+      end
+
+    case result do
+      {:ok, naive_dt} when operator == :>= ->
+        where(query, [w], field(w, ^field) >= ^naive_dt)
+
+      {:ok, naive_dt} when operator == :<= ->
+        where(query, [w], field(w, ^field) <= ^naive_dt)
 
       _ ->
         query
     end
   end
+
+  # ═══════════════════════════════════════════════════════
 
   def create_working_time(attrs \\ %{}) do
     %WorkingTime{}

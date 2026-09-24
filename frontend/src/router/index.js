@@ -1,40 +1,50 @@
 import { createRouter, createWebHistory } from 'vue-router'
-
+import User from '../components/User.vue'
+import WorkingTimes from '../components/WorkingTimes.vue'
+import WorkingTime from '../components/WorkingTime.vue'
+import ClockManager from '../components/ClockManager.vue'
+import ChartManager from '../components/ChartManager.vue'
 const routes = [
   {
     path: '/workingTimes/:userID',
     name: 'workingTimes',
-    component: "",
+    component: WorkingTimes,
     props: true
   },
   {
     path: '/workingTime/:userid',
-    name: 'workingTime',
-    component: "",
+    name: 'workingTimeCreate',
+    component: WorkingTime,
     props: true
   },
   {
     path: '/workingTime/:userid/:workingtimeid',
-    name: 'workingTime',
-    component: "",
+    name: 'workingTimeEdit',
+    component: WorkingTime,
     props: true
   },
   {
     path: '/clock/:userid',
     name: 'clock',
-    component: "",
+    component: ClockManager,
     props: true
   },
   {
     path: '/chartManager/:userid',
     name: 'chartManager',
-    component: "",
+    component: ChartManager,
+    props: true
+  },
+  {
+    path: '/user',
+    name: 'user',
+    component: User,
     props: true
   }
 ]
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: createWebHistory(),
   routes
 })
 

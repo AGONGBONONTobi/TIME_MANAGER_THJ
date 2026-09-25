@@ -3,76 +3,121 @@ import api from '../services/api'
 
 export default {
   name: 'WorkingTime',
+  props: ['userID', 'workingTimeID'],
   data() {
     return {
-      workingTime: null
+      workingTime: null,
+      start_at: '',
+      end_at: ''
     }
   },
-  mounted() {
-    this.fetchWorkingTime()
-  },
   methods: {
+    toUtcIso(localDateTime) {
+      if (!localDateTime) return null
+      return new Date(localDateTime).toISOString()
+    },
+
     async createWorkingTime() {
-      const id = this.$route.params.userID
-      if (!id) return alert ("Aucun user!")
+      if (!this.userID) return alert('Aucun user !')
       try {
-        const res = await api.post(`/workingtime/${id}`, {
-          start_at: this.start_at,
-          end_at: this.end_at
+        const res = await api.post(`/workingtime/${this.userID}`, {
+          start_at: this.toUtcIso(this.start_at),
+          end_at: this.toUtcIso(this.end_at)
         })
         this.workingTime = res.data.data
-        // this.id = this.workingTime.id;
         this.start_at = this.workingTime.start_at
         this.end_at = this.workingTime.end_at
-        alert('Temps de travail créé !')
+        alert('WorkingTime créé !')
       } catch (err) {
         console.error(err)
         alert('Erreur lors de la création')
       }
     },
+
     async updateWorkingTime() {
-       const id = this.$route.params.workingTimeId || this.workingTime?.id
-      if (!id) return
+      if (!this.workingTimeID) return alert('Aucun workingtime à mettre à jour')
       try {
-        const res = await api.put(`workingtime/${id}`, {
-          // const l = res.data.data;
-          start_at : this.start_at,
-          end_at : this.end_at
+        const res = await api.put(`/workingtime/${this.workingTimeID}`, {
+          start_at: this.toUtcIso(this.start_at),
+          end_at: this.toUtcIso(this.end_at)
         })
         this.workingTime = res.data.data
         this.start_at = this.workingTime.start_at
         this.end_at = this.workingTime.end_at
-        alert(`workingtime ${id} mis à jour`);
+        alert(`WorkingTime ${this.workingTimeID} mis à jour`)
       } catch (err) {
         console.error(err)
       }
     },
+
     async deleteWorkingTime() {
-      const id = this.$route.workingTime.id || this.user?.id
-      if (!id) return alert('Aucun workingtime à supprimer')
-            if (!confirm('Confirmer la suppression ?')) return
+      if (!this.workingTimeID) return alert('Aucun workingtime à supprimer')
+      if (!confirm('Confirmer la suppression ?')) return
       try {
-        await api.delete(`workingtime/${id}`);
+        await api.delete(`/workingtime/${this.workingTimeID}`)
         this.workingTime = null
         this.start_at = ''
         this.end_at = ''
-        alert("workingtime supprimé")
+        alert('WorkingTime supprimé')
       } catch (err) {
         console.error(err)
       }
-    },
-    fetchWorkingTime() {
-      // Simulate fetching working time data from an API or service
-      // setTimeout(() => {
-      //   this.workingTime = '9:00 AM - 5:00 PM'
-      // }, 1000)
     }
   }
 }
-
 </script>
 
-<template></template>
+<template>
+  <div class="card p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2>
+        {{ isEdit ? '✏️ Éditer Working Time' : '➕ Nouveau Working Time' }}
+        <small class="text-muted">(User {{ userID }})</small>
+      </h2>
+      <router-link :to="`/workingTimes/${userID}`" class="btn btn-outline-secondary">
+        ← Retour
+      </router-link>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Début</label>
+      <input v-model="start_at" type="datetime-local" class="form-control" />
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Fin</label>
+      <input v-model="end_at" type="datetime-local" class="form-control" />
+    </div>
+
+    <div class="d-flex gap-2">
+      <button
+        v-if="!isEdit"
+        class="btn btn-success"
+        @click="createWorkingTime"
+      >
+        Créer
+      </button>
+      <button
+        v-else
+        class="btn btn-warning"
+        @click="updateWorkingTime"
+      >
+        Mettre à jour
+      </button>
+      <button
+        v-if="isEdit"
+        class="btn btn-danger"
+        @click="deleteWorkingTime"
+      >
+        Supprimer
+      </button>
+    </div>
+
+    <div v-if="workingTime" class="alert alert-info mt-3">
+      <strong>WorkingTime #{{ workingTime.id }} :</strong>
+      {{ formatTime(workingTime.start_at) }} → {{ formatTime(workingTime.end_at) }}
+    </div>
+  </div>
+</template>
 
 
 <style scoped>

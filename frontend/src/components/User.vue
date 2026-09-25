@@ -1,35 +1,14 @@
 <!-- src/components/User.vue -->
-<template>
-  <div class="card p-4">
-    <h2>👤 Gestion de l'utilisateur</h2>
-
-    <div class="mb-3">
-      <label class="form-label">Nom d'utilisateur</label>
-      <input v-model="username" class="form-control" placeholder="Entrez un nom" />
-    </div>
-    <div class="mb-3">
-      <label class="form-label">Email</label>
-      <input v-model="email" type="email" class="form-control" placeholder="Entrez un email" />
-    </div>
-
-    <div class="d-flex gap-2">
-      <button class="btn btn-success" @click="createUser">Créer</button>
-      <button class="btn btn-primary" @click="getUser">Récupérer</button>
-      <button class="btn btn-warning" @click="updateUser">Mettre à jour</button>
-      <button class="btn btn-danger" @click="deleteUser">Supprimer</button>
-    </div>
-
-    <div v-if="user" class="alert alert-info mt-3">
-      <strong>User actuel :</strong> {{ user.username }} (ID: {{ user.id }})
-    </div>
-  </div>
-</template>
-
 <script>
+import HeroSection from './HeroSection.vue'
+
 import api from '../services/api'
 
 export default {
   name: 'User',
+  components: {
+    HeroSection
+  },
   data() {
     return {
       user: null,
@@ -106,3 +85,33 @@ export default {
   }
 }
 </script>
+
+<template>
+  <div>
+    <HeroSection />
+
+    <div class="card p-4 mt-5">
+    <h2>👤 Gestion de l'utilisateur</h2>
+
+    <div class="mb-3">
+      <label class="form-label">Nom d'utilisateur</label>
+      <input v-model="username" class="form-control" placeholder="Entrez un nom" />
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Email</label>
+      <input v-model="email" type="email" class="form-control" placeholder="Entrez un email" />
+    </div>
+
+    <div class="d-flex gap-2">
+      <button class="btn btn-success" @click="createUser">Créer</button>
+      <button class="btn btn-primary" @click="getUser">Récupérer</button>
+      <button class="btn btn-warning" @click="updateUser">Mettre à jour</button>
+      <button class="btn btn-danger" @click="deleteUser">Supprimer</button>
+    </div>
+
+    <div v-if="user" class="alert alert-info mt-3">
+      <strong>User actuel :</strong> {{ user.username }} (ID: {{ user.id }})
+    </div>
+    </div>
+  </div>
+</template>

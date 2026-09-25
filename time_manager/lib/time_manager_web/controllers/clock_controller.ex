@@ -1,9 +1,25 @@
 defmodule TimeManagerWeb.ClockController do
   use TimeManagerWeb, :controller
+  use OpenApiSpex.ControllerSpecs
 
   alias TimeManager.Clocking
 
   action_fallback TimeManagerWeb.FallbackController
+
+  operation :index,
+    summary: "List clocks for a user",
+    parameters: [userID: [in: :path, required: true, type: :string]],
+    responses: [ok: "Clocks returned"]
+
+  operation :create,
+    summary: "Clock in or out for a user",
+    parameters: [userID: [in: :path, required: true, type: :string]],
+    responses: [
+      created: "Clock created",
+      not_found: "User not found",
+      conflict: "User is already clocked in",
+      unprocessable_entity: "User is not clocked in"
+    ]
 
   @doc """
   GET /api/clocks/:userID

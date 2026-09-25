@@ -1,9 +1,33 @@
 defmodule TimeManagerWeb.UserController do
   use TimeManagerWeb, :controller
+  use OpenApiSpex.ControllerSpecs
 
   alias TimeManager.Accounts
 
   action_fallback TimeManagerWeb.FallbackController
+
+  operation :index,
+    summary: "List users",
+    responses: [ok: "Users returned"]
+
+  operation :create,
+    summary: "Create a user",
+    responses: [created: "User created", bad_request: "Invalid user"]
+
+  operation :show,
+    summary: "Get a user",
+    parameters: [userID: [in: :path, required: true, type: :string]],
+    responses: [ok: "User returned", not_found: "User not found"]
+
+  operation :update,
+    summary: "Update a user",
+    parameters: [userID: [in: :path, required: true, type: :string]],
+    responses: [ok: "User updated", bad_request: "Invalid user", not_found: "User not found"]
+
+  operation :delete,
+    summary: "Delete a user",
+    parameters: [userID: [in: :path, required: true, type: :string]],
+    responses: [no_content: "User deleted", not_found: "User not found"]
 
   def index(conn, params) do
     users = Accounts.get_users_by_filters(params)

@@ -1,58 +1,4 @@
-<script>
-import api from '../services/api'
-
-export default {
-  name: 'ClockManager',
-  props: ['userID'],
-  data() {
-    return {
-      clock: null,
-      time: '',
-      clockIn: false,
-      lastTime: false
-    }
-  },
-  mounted() {
-    this.refresh()
-  },
-  methods: {
-    // Convert "2026-09-25T14:30" (local, no seconds) to UTC ISO with seconds
-    toUtcIso(localDateTime) {
-      if (!localDateTime) return null
-      const d = new Date(localDateTime)
-      return d.toISOString() // "2026-09-25T12:30:00.000Z"
-    },
-
-    async createClock() {
-      if (!this.userID) return alert('Aucun utilisateur')
-      if (!this.time) return alert('Choisis une heure')
-      try {
-        const res = await api.post(`/clocks/${this.userID}`, {
-          time: this.toUtcIso(this.time),
-          status: this.status
-        })
-        this.clock = res.data.data
-        this.time = this.clock.time
-        this.clockIn = this.clock.status
-        alert('Clock enregistré')
-      } catch (err) {
-        console.error(err)
-        alert('Erreur lors du pointage')
-      }
-    },
-  async refresh() {
-      if (!this.userID) return
-      try {
-        const res = await api.get(`/clocks/${this.userID}`)
-        this.clockIn = res.data.data.status
-      } catch (err) {
-        console.error(err)
-      }
-    }
-  }
-}
-</script>
-
+<!-- src/components/ClockManager.vue -->
 <template>
   <div class="card p-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -71,7 +17,7 @@ export default {
         🔄 Rafraîchir
       </button>
       <span v-if="clockIn" class="badge bg-success align-self-center">
-        Pointage en cours depuis {{ lastClock ? lastClock.time : '—' }}
+        Pointage en cours depuis {{ lastClock ? formatTime(lastClock.time) : '—' }}
       </span>
       <span v-else class="badge bg-secondary align-self-center">
         Aucun pointage en cours
@@ -106,6 +52,66 @@ export default {
   </div>
 </template>
 
+<script>
+import api from '../services/api'
+
+export default {
+  name: 'ClockManager',
+  props: ['userID'],
+  data() {
+    return {
+      clocks: []
+    }
+  },
+  computed: {
+    sortedClocks() {
+      return [...this.clocks].sort(
+        (a, b) => new Date(b.time) - new Date(a.time)
+      )
+    },
+    lastClock() {
+      return this.sortedClocks[0] || null
+    },
+    clockIn() {
+      return this.lastClock ? this.lastClock.status === true : false
+    }
+  },
+  mounted() {
+    this.refresh()
+  },
+  methods: {
+    formatTime(iso) {
+      if (!iso) return '—'
+      return new Date(iso).toLocaleString()
+    },
+
+    async refresh() {
+      if (!this.userID) return
+      try {
+        const res = await api.get(`/clocks/${this.userID}`)
+        this.clocks = res.data?.data ?? []
+      } catch (err) {
+        console.error(err)
+        this.clocks = []
+      }
+    },
+
+    async clock() {
+      if (!this.userID) return alert('Aucun utilisateur')
+      try {
+        await api.post(`/clocks/${this.userID}`, {
+          time: new Date().toISOString(),
+          status: !this.clockIn
+        })
+        await this.refresh()
+      } catch (err) {
+        console.error(err)
+        alert('Erreur lors du pointage')
+      }
+    }
+  }
+}
+</script>
 
 <style scoped>
 </style>

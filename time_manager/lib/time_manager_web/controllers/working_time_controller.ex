@@ -2,11 +2,12 @@ defmodule TimeManagerWeb.WorkingTimeController do
   use TimeManagerWeb, :controller
   use OpenApiSpex.ControllerSpecs
 
+  alias TimeManager.Clocking
   alias TimeManager.WorkingTimes
 
   action_fallback(TimeManagerWeb.FallbackController)
 
-  operation :index,
+  operation(:index,
     summary: "List working times for a user",
     parameters: [
       userID: [in: :path, required: true, type: :string],
@@ -14,29 +15,38 @@ defmodule TimeManagerWeb.WorkingTimeController do
       end: [in: :query, type: :string]
     ],
     responses: [ok: "Working times returned"]
+  )
 
-  operation :show,
+  operation(:show,
     summary: "Get a working time",
     parameters: [
       userID: [in: :path, required: true, type: :string],
       id: [in: :path, required: true, type: :string]
     ],
     responses: [ok: "Working time returned", not_found: "Working time not found"]
+  )
 
-  operation :create,
+  operation(:create,
     summary: "Create a working time",
     parameters: [userID: [in: :path, required: true, type: :string]],
     responses: [created: "Working time created", bad_request: "Invalid working time"]
+  )
 
-  operation :update,
+  operation(:update,
     summary: "Update a working time",
     parameters: [id: [in: :path, required: true, type: :string]],
-    responses: [ok: "Working time updated", bad_request: "Invalid working time", not_found: "Working time not found"]
+    responses: [
+      ok: "Working time updated",
+      bad_request: "Invalid working time",
+      not_found: "Working time not found"
+    ]
+  )
 
-  operation :delete,
+  operation(:delete,
     summary: "Delete a working time",
     parameters: [id: [in: :path, required: true, type: :string]],
     responses: [no_content: "Working time deleted", not_found: "Working time not found"]
+  )
 
   # GET /api/workingtime/:userID?start=X&end=Y
   def index(conn, %{"userID" => user_id} = params) do
@@ -48,9 +58,7 @@ defmodule TimeManagerWeb.WorkingTimeController do
   def show(conn, %{"userID" => user_id, "id" => id}) do
     case WorkingTimes.get_for_user(user_id, id) do
       nil ->
-        conn
-        |> put_status(404)
-        |> json(%{error: "WorkingTime not found"})
+        send_resp(conn, :not_found, "")
 
       working_time ->
         conn
@@ -61,22 +69,36 @@ defmodule TimeManagerWeb.WorkingTimeController do
 
   # POST /api/workingtime/:userID
   def create(conn, %{"userID" => user_id} = params) do
-    attrs =
-      params
-      |> Map.get("workingtime", params)
-      |> Map.take(["start", "end"])
-      |> Map.put("user_id", user_id)
+    attrs = working_time_attrs(params)
 
-    case WorkingTimes.create_working_time(attrs) do
-      {:ok, wt} ->
-        conn
-        |> put_status(201)
-        |> render(:show, working_time: wt)
+    if attrs == %{} do
+      case Clocking.create_clock(user_id) do
+        {:ok, clock} ->
+          working_time = WorkingTimes.get_by_clock_time(user_id, clock.time, clock.status)
 
-      {:error, changeset} ->
-        conn
-        |> put_status(400)
-        |> json(%{error: "Bad request", details: changeset})
+          conn
+          |> put_status(201)
+          |> render(:show, working_time: working_time)
+
+        {:error, :user_not_found} ->
+          send_resp(conn, :not_found, "")
+
+        {:error, reason} ->
+          conn |> put_status(:unprocessable_entity) |> json(%{error: inspect(reason)})
+      end
+    else
+      case WorkingTimes.create_for_user(user_id, attrs) do
+        {:ok, wt} ->
+          conn
+          |> put_status(201)
+          |> render(:show, working_time: wt)
+
+        {:error, changeset} ->
+          conn
+          |> put_status(400)
+          |> put_view(json: TimeManagerWeb.ChangesetJSON)
+          |> render(:error, changeset: changeset)
+      end
     end
   end
 
@@ -90,9 +112,7 @@ defmodule TimeManagerWeb.WorkingTimeController do
 
       working_time ->
         attrs =
-          params
-          |> Map.get("workingtime", params)
-          |> Map.take(["start", "end"])
+          working_time_attrs(params)
 
         case WorkingTimes.update_working_time(working_time, attrs) do
           {:ok, wt} ->
@@ -103,7 +123,8 @@ defmodule TimeManagerWeb.WorkingTimeController do
           {:error, changeset} ->
             conn
             |> put_status(400)
-            |> json(%{error: "Bad request", details: changeset})
+            |> put_view(json: TimeManagerWeb.ChangesetJSON)
+            |> render(:error, changeset: changeset)
         end
     end
   end
@@ -120,5 +141,16 @@ defmodule TimeManagerWeb.WorkingTimeController do
         WorkingTimes.delete_working_time(working_time)
         send_resp(conn, :no_content, "")
     end
+  end
+
+  defp working_time_attrs(params) do
+    params
+    |> Map.get("workingtime", params)
+    |> Map.take(["start", "end", "start_at", "end_at"])
+    |> Map.new(fn
+      {"start_at", value} -> {"start", value}
+      {"end_at", value} -> {"end", value}
+      pair -> pair
+    end)
   end
 end

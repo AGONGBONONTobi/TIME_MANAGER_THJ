@@ -44,7 +44,7 @@ import HeroSection from './HeroSection.vue'
 import api from '../services/api'
 
 export default {
-  name: 'User',
+  name: 'UserPage',
   components: { HeroSection },
   data() { return { userId: '', username: '', email: '', user: null, isLoading: false, statusMessage: '', statusKind: 'neutral' } },
   computed: {
@@ -56,22 +56,22 @@ export default {
       if (!this.userId) return this.setStatus('Indique un identifiant avant de charger un profil.', 'error')
       this.isLoading = true
       try { const response = await api.getUser(this.userId); this.user = response.data.data; this.username = this.user.username || ''; this.email = this.user.email || ''; this.setStatus('Profil chargé.', 'success') }
-      catch (error) { this.setStatus('Impossible de charger ce profil.', 'error') } finally { this.isLoading = false }
+      catch { this.setStatus('Impossible de charger ce profil.', 'error') } finally { this.isLoading = false }
     },
     async createUser() {
       this.isLoading = true
       try { const response = await api.createUser({ username: this.username, email: this.email }); this.user = response.data.data; this.userId = this.user.id; this.setStatus('Profil créé avec succès.', 'success') }
-      catch (error) { this.setStatus('La création du profil a échoué.', 'error') } finally { this.isLoading = false }
+      catch { this.setStatus('La création du profil a échoué.', 'error') } finally { this.isLoading = false }
     },
     async updateUser() {
       this.isLoading = true
       try { const response = await api.updateUser(this.userId, { username: this.username, email: this.email }); this.user = response.data.data; this.setStatus('Profil mis à jour.', 'success') }
-      catch (error) { this.setStatus('La mise à jour du profil a échoué.', 'error') } finally { this.isLoading = false }
+      catch { this.setStatus('La mise à jour du profil a échoué.', 'error') } finally { this.isLoading = false }
     },
     async deleteUser() {
       this.isLoading = true
       try { await api.deleteUser(this.userId); this.user = null; this.username = ''; this.email = ''; this.setStatus('Profil supprimé.', 'success') }
-      catch (error) { this.setStatus('La suppression du profil a échoué.', 'error') } finally { this.isLoading = false }
+      catch { this.setStatus('La suppression du profil a échoué.', 'error') } finally { this.isLoading = false }
     }
   }
 }

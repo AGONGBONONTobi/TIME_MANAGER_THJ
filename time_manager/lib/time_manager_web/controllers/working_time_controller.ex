@@ -1,9 +1,42 @@
 defmodule TimeManagerWeb.WorkingTimeController do
   use TimeManagerWeb, :controller
+  use OpenApiSpex.ControllerSpecs
 
   alias TimeManager.WorkingTimes
 
   action_fallback(TimeManagerWeb.FallbackController)
+
+  operation :index,
+    summary: "List working times for a user",
+    parameters: [
+      userID: [in: :path, required: true, type: :string],
+      start: [in: :query, type: :string],
+      end: [in: :query, type: :string]
+    ],
+    responses: [ok: "Working times returned"]
+
+  operation :show,
+    summary: "Get a working time",
+    parameters: [
+      userID: [in: :path, required: true, type: :string],
+      id: [in: :path, required: true, type: :string]
+    ],
+    responses: [ok: "Working time returned", not_found: "Working time not found"]
+
+  operation :create,
+    summary: "Create a working time",
+    parameters: [userID: [in: :path, required: true, type: :string]],
+    responses: [created: "Working time created", bad_request: "Invalid working time"]
+
+  operation :update,
+    summary: "Update a working time",
+    parameters: [id: [in: :path, required: true, type: :string]],
+    responses: [ok: "Working time updated", bad_request: "Invalid working time", not_found: "Working time not found"]
+
+  operation :delete,
+    summary: "Delete a working time",
+    parameters: [id: [in: :path, required: true, type: :string]],
+    responses: [no_content: "Working time deleted", not_found: "Working time not found"]
 
   # GET /api/workingtime/:userID?start=X&end=Y
   def index(conn, %{"userID" => user_id} = params) do

@@ -3,6 +3,7 @@ defmodule TimeManagerWeb.Router do
 
   pipeline :api do
     plug(:accepts, ["json"])
+    plug OpenApiSpex.Plug.PutApiSpec, module: TimeManagerWeb.ApiSpec
   end
 
   scope "/api", TimeManagerWeb do
@@ -24,11 +25,22 @@ defmodule TimeManagerWeb.Router do
       delete("/:id", WorkingTimeController, :delete)
     end
 
+
     # resources("/clocks", ClockController, except: [:new, :edit])
     scope "/clocks" do
       get("/:userID", ClockController, :index)
       post("/:userID", ClockController, :create)
     end
+
+  end
+
+  scope "/" do
+    pipe_through :api
+
+    get "/api/openapi", OpenApiSpex.Plug.RenderSpec, []
+
+    forward "/swagger", OpenApiSpex.Plug.SwaggerUI,
+      path: "/api/openapi"
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development

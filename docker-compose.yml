@@ -1,0 +1,24 @@
+services:
+  db:
+    image: postgres:15
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build: ./time_manager
+    image: <user>/time-manager-api:latest
+    depends_on:
+      - db
+    ports:
+      - "4000:4000"
+
+  front:
+    build: ./frontend
+    image: <user>/time-manager-front:latest
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+
+volumes:
+  pgdata:

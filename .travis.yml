@@ -1,0 +1,43 @@
+language: minimal
+
+services:
+  - docker
+
+env:
+  global:
+    - DOCKER_IMAGE=$DOCKER_USER/hello
+    - VM_USER=tobiagongbonon
+    - VM_IP=34.122.33.216
+    - DEPLOY_PATH=/home/tobiagongbonon/TIME_MANAGER_THJ/time_manager_devops/hello
+    - APP_SUBDIR=time_manager_devops/hello
+
+stages:
+  - name: build & push image
+  - name: deploy
+    if: branch = main
+
+jobs:
+  include:
+    # Stage 1 — Build & Push
+    - stage: build & push image
+      script:
+        - cd $APP_SUBDIR
+        - docker build -t $DOCKER_IMAGE:$TRAVIS_COMMIT .
+        - docker tag $DOCKER_IMAGE:$TRAVIS_COMMIT $DOCKER_IMAGE:latest
+        - echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+        - docker push $DOCKER_IMAGE:$TRAVIS_COMMIT
+        - docker push $DOCKER_IMAGE:latest
+
+    # Stage 2 — Deploy
+    - stage: deploy
+      before_script:
+        - echo "$SSH_KEY_BASE64" | base64 -d > /tmp/deploy_key
+        - chmod 600 /tmp/deploy_key
+      script:
+        - cd $APP_SUBDIR
+        - scp -i /tmp/deploy_key -o StrictHostKeyChecking=no docker-compose.yml $VM_USER@$VM_IP:$DEPLOY_PATH/
+        - ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no $VM_USER@$VM_IP "
+            cd $DEPLOY_PATH &&
+            DOCKER_IMAGE=$DOCKER_IMAGE docker compose pull phoenix &&
+            DOCKER_IMAGE=$DOCKER_IMAGE docker compose up -d phoenix
+          "

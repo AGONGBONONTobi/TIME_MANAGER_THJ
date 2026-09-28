@@ -23,6 +23,7 @@ RUN mkdir config
 
 # Copier la config AVANT de compiler les deps
 COPY config/config.exs config/${MIX_ENV}.exs config/
+COPY config/runtime.exs config/ 
 RUN mix deps.compile
 
 # Copier le code source

@@ -1,24 +1,43 @@
 services:
   db:
     image: postgres:15
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${PGUSER}
+      POSTGRES_PASSWORD: ${PGPASSWORD}
+      POSTGRES_DB: ${PGDATABASE}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PGUSER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
   api:
-    build: ./time_manager
-    image: <user>/time-manager-api:latest
+    image: ${DOCKER_USER}/time-manager-api:latest
+    build:
+      context: ./time_manager
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
     ports:
       - "4000:4000"
+    restart: unless-stopped
 
   front:
-    build: ./frontend
-    image: <user>/time-manager-front:latest
+    image: ${DOCKER_USER}/time-manager-front:latest
+    build:
+      context: ./frontend
     depends_on:
       - api
     ports:
       - "80:80"
+    restart: unless-stopped
 
 volumes:
   pgdata:

@@ -2,7 +2,7 @@
 set -e
 
 echo "Application des migrations..."
-/app/bin/migrate
+/app/bin/time_manager eval "TimeManager.Release.migrate()"
 
 echo "Démarrage du serveur Phoenix..."
-exec /app/bin/server
+exec /app/bin/time_manager start

@@ -35,3 +35,18 @@ time_manager-*.tar
 npm-debug.log
 /assets/node_modules/
 
+# Environnement
+.env
+
+# Elixir
+_build/
+deps/
+*.beam
+
+# Node.js
+node_modules/
+dist/
+
+# Divers
+.DS_Store
+*.log

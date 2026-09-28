@@ -7,9 +7,9 @@ env:
   global:
     - DOCKER_API_IMAGE=$DOCKER_USER/time-manager-api
     - DOCKER_FRONT_IMAGE=$DOCKER_USER/time-manager-front
-    - VM_USER=tobiagongbonon
+    - VM_USER=travis
     - VM_IP=34.122.33.216
-    - DEPLOY_PATH=/home/tobiagongbonon/TIME_MANAGER_THJ
+    - DEPLOY_PATH=/home/travis/TIME_MANAGER_THJ
 
 stages:
   - name: build & push images

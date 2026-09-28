@@ -14,7 +14,7 @@ env:
 stages:
   - name: build & push images
   - name: deploy
-    if: branch IN (main, dev_ops_bootstrap)
+    if: branch = dev_ops_bootstrap
 
 jobs:
   include:

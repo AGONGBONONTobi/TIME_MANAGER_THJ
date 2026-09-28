@@ -5,28 +5,31 @@ services:
 
 env:
   global:
-    - DOCKER_IMAGE=$DOCKER_USER/hello
+    - DOCKER_API_IMAGE=$DOCKER_USER/time-manager-api
+    - DOCKER_FRONT_IMAGE=$DOCKER_USER/time-manager-front
     - VM_USER=tobiagongbonon
     - VM_IP=34.122.33.216
-    - DEPLOY_PATH=/home/tobiagongbonon/TIME_MANAGER_THJ/time_manager_devops/hello
-    - APP_SUBDIR=time_manager_devops/hello
+    - DEPLOY_PATH=/home/tobiagongbonon/TIME_MANAGER_THJ
 
 stages:
-  - name: build & push image
+  - name: build & push images
   - name: deploy
     if: branch = dev_ops_bootstrap
 
 jobs:
   include:
-    # Stage 1 — Build & Push
-    - stage: build & push image
+    # Stage 1 — Build & Push des 2 images
+    - stage: build & push images
       script:
-        - cd $APP_SUBDIR
-        - docker build -t $DOCKER_IMAGE:$TRAVIS_COMMIT .
-        - docker tag $DOCKER_IMAGE:$TRAVIS_COMMIT $DOCKER_IMAGE:latest
         - echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-        - docker push $DOCKER_IMAGE:$TRAVIS_COMMIT
-        - docker push $DOCKER_IMAGE:latest
+        - docker build -t $DOCKER_API_IMAGE:$TRAVIS_COMMIT ./time_manager
+        - docker tag $DOCKER_API_IMAGE:$TRAVIS_COMMIT $DOCKER_API_IMAGE:latest
+        - docker push $DOCKER_API_IMAGE:$TRAVIS_COMMIT
+        - docker push $DOCKER_API_IMAGE:latest
+        - docker build -t $DOCKER_FRONT_IMAGE:$TRAVIS_COMMIT ./frontend
+        - docker tag $DOCKER_FRONT_IMAGE:$TRAVIS_COMMIT $DOCKER_FRONT_IMAGE:latest
+        - docker push $DOCKER_FRONT_IMAGE:$TRAVIS_COMMIT
+        - docker push $DOCKER_FRONT_IMAGE:latest
 
     # Stage 2 — Deploy
     - stage: deploy
@@ -34,10 +37,9 @@ jobs:
         - echo "$SSH_KEY_BASE64" | base64 -d > /tmp/deploy_key
         - chmod 600 /tmp/deploy_key
       script:
-        - cd $APP_SUBDIR
         - scp -i /tmp/deploy_key -o StrictHostKeyChecking=no docker-compose.yml $VM_USER@$VM_IP:$DEPLOY_PATH/
         - ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no $VM_USER@$VM_IP "
             cd $DEPLOY_PATH &&
-            DOCKER_IMAGE=$DOCKER_IMAGE docker compose pull phoenix &&
-            DOCKER_IMAGE=$DOCKER_IMAGE docker compose up -d phoenix
+            DOCKER_USER=$DOCKER_USER docker compose pull &&
+            DOCKER_USER=$DOCKER_USER docker compose up -d
           "

@@ -18,7 +18,7 @@ const routes = [
     props: true
   },
   {
-    path: '/workingTime/:userID/:workingTimeID',
+    path: '/workingTime/:userID/:workingtimeid',
     name: 'workingTimeEdit',
     component: WorkingTime,
     props: true
@@ -38,7 +38,8 @@ const routes = [
   {
     path: '/user',
     name: 'user',
-    component: User
+    component: User,
+    props: true
   }
 ]
 

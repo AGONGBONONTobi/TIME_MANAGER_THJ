@@ -1,9 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import User from '../components/User.vue'
 import WorkingTimes from '../components/WorkingTimes.vue'
-import WorkingTime from '../components/WorkingTime.vue'
-import ClockManager from '../components/ClockManager.vue'
-import ChartManager from '../components/ChartManager.vue'
 const routes = [
   {
     path: '/workingTimes/:userID',
@@ -12,6 +9,7 @@ const routes = [
     props: true
   },
   {
+<<<<<<< HEAD
     path: '/workingTime/:userID',
     name: 'workingTimeCreate',
     component: WorkingTime,
@@ -40,6 +38,15 @@ const routes = [
     name: 'user',
     component: User,
     props: true
+=======
+    path: '/user',
+    name: 'user',
+    component: User
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: { name: 'user' }
+>>>>>>> 6b9108d3791c70f2470c5e7df48edaf33090ac2f
   }
 ]
 

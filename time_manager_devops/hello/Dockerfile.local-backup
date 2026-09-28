@@ -1,0 +1,41 @@
+# 1. Image de base Elixir (tag précis, jamais latest)
+FROM elixir:1.15-slim
+
+# 2. Dépendances système : PostgreSQL client + Node.js
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    nodejs \
+    npm \
+    git \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# 3. Installer hex et rebar (nécessaires à mix)
+RUN mix local.hex --force && mix local.rebar --force
+
+# 4. Répertoire de travail
+WORKDIR /app
+
+# 5. Copier les fichiers de dépendances d'abord (cache Docker)
+COPY mix.exs mix.lock ./
+RUN mix deps.get --only prod
+RUN MIX_ENV=prod mix deps.compile
+
+# 6. Copier les assets front
+
+# 7. Copier tout le code source
+COPY . .
+
+# 8. Compiler les assets + l'app
+RUN MIX_ENV=prod mix compile
+RUN MIX_ENV=prod mix phx.digest
+
+# 9. Rendre l'entrypoint exécutable
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# 10. Port exposé
+EXPOSE 4000
+
+# 11. Point d'entrée
+ENTRYPOINT ["/app/entrypoint.sh"]

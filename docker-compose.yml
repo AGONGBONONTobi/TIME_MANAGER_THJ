@@ -1,34 +1,43 @@
 services:
   db:
-    image: postgres:16
-    container_name: time_manager_db
+    image: postgres:15
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: time_manager_prod
+      POSTGRES_USER: ${PGUSER}
+      POSTGRES_PASSWORD: ${PGPASSWORD}
+      POSTGRES_DB: ${PGDATABASE}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d time_manager_prod"]
+      test: ["CMD-SHELL", "pg_isready -U ${PGUSER}"]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 5
+    restart: unless-stopped
 
-  backend:
+  api:
+    image: ${DOCKER_USER}/time-manager-api:latest
     build:
       context: ./time_manager
-    container_name: time_manager_backend
-    environment:
-      DATABASE_URL: ecto://postgres:postgres@db/time_manager_prod
-      SECRET_KEY_BASE: jo7b6C3dJWk6Kte7Exmiq3xyaCrEWLZOJODbDtYq+IdHcXRt4XV6+5bDgt6J91nA
-      PHX_HOST: localhost
-      PORT: 4000
-      PHX_SERVER: "true"
-    ports:
-      - "4000:4000"
     depends_on:
       db:
         condition: service_healthy
+    env_file:
+      - .env
+    ports:
+      - "4000:4000"
+    restart: unless-stopped
+
+  front:
+    image: ${DOCKER_USER}/time-manager-front:latest
+    build:
+      context: ./frontend
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+    restart: unless-stopped
 
 volumes:
-  postgres_data:
+  pgdata:

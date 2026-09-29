@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import User from '../components/User.vue'
 import WorkingTimes from '../components/WorkingTimes.vue'
+import ManageDashboard from '@/components/ManageDashboard.vue'
 const routes = [
   {
     path: '/workingTimes/:userID',
@@ -12,6 +13,11 @@ const routes = [
     path: '/user',
     name: 'user',
     component: User
+  },
+  {
+      path: '/manager-dashboard',
+      name: 'manager Dashboard',
+      component: ManageDashboard
   },
   {
     path: '/:pathMatch(.*)*',

@@ -8,6 +8,7 @@ const api = axios.create({
 })
 
 api.getUser = (userID) => api.get(`/users/${userID}`)
+api.getUsers = () => api.get('/users')
 api.createUser = (user) => api.post('/users', { user })
 api.updateUser = (userID, user) => api.put(`/users/${userID}`, { user })
 api.deleteUser = (userID) => api.delete(`/users/${userID}`)

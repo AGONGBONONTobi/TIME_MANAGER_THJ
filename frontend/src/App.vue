@@ -23,7 +23,8 @@ export default {
       <div class="brand"><span class="brand-symbol"><i></i></span><span>Time Manager</span></div>
       <nav class="sidebar-nav" aria-label="Navigation principale">
         <p class="nav-section-title">Navigation</p>
-        <router-link class="sidebar-link is-selected" :to="{ name: 'user' }" @click="closeNav"><span class="nav-icon">⌂</span><span>Tableau de bord</span><span class="nav-arrow">›</span></router-link>
+        <router-link class="sidebar-link" :class="{ 'is-selected': $route.name === 'user' }" :to="{ name: 'user' }" @click="closeNav"><span class="nav-icon">⌂</span><span>Tableau de bord</span><span class="nav-arrow">›</span></router-link>
+        <router-link class="sidebar-link" :class="{ 'is-selected': $route.name === 'hr' }" :to="{ name: 'hr' }" @click="closeNav"><span class="nav-icon">▦</span><span>Administration RH</span><span class="nav-arrow">›</span></router-link>
         <p class="nav-section-title nav-section-spaced">Mon espace</p>
         <router-link class="sidebar-link" :to="{ name: 'workingTimes', params: { userID: currentUserId } }" @click="closeNav"><span class="nav-icon">◷</span><span>Historique</span><span class="nav-arrow">›</span></router-link>
       </nav>

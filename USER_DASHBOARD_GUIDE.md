@@ -2,7 +2,7 @@
 
 ## Périmètre
 
-Cette branche contient uniquement le parcours **Utilisateur**. Les vues Manager et Admin ne sont pas intégrées ici : elles pourront avoir leurs propres pages et leur propre navigation plus tard.
+Cette branche contient les parcours **Utilisateur** et **RH / Administration**. La vue Manager n'est pas intégrée ici : elle pourra avoir sa propre page et sa propre navigation plus tard.
 
 L'utilisateur peut :
 
@@ -11,6 +11,17 @@ L'utilisateur peut :
 - voir son chronomètre uniquement pendant une session active ;
 - consulter son quota et ses statistiques hebdomadaires ;
 - consulter ses dix derniers pointages en lecture seule.
+
+Le profil **RH / Administration** est accessible depuis `Administration RH`. Il peut :
+
+- consulter les collaborateurs retournés par `GET /api/users` ;
+- suivre les heures de la semaine, les sessions actives et les heures de nuit ;
+- repérer les collaborateurs dont le seuil hebdomadaire ou nocturne nécessite une vérification ;
+- rechercher et filtrer les collaborateurs ;
+- exporter le tableau courant au format CSV ;
+- consulter le journal des dernières activités en lecture seule.
+
+Cette première vue RH réutilise `GET /api/workingtime/:userID` pour charger les pointages de chaque collaborateur. Les workflows de validation, de paie, de congés, de permissions et d'audit détaillé nécessiteront des endpoints dédiés avant d'être ajoutés à l'interface.
 
 La page de formulaire « Gestion du temps de travail » visible dans l'ancienne capture n'est donc plus accessible depuis l'application. Les anciennes URLs `/workingTime/...`, `/clock/...` et `/chartManager/...` sont redirigées vers `/user`.
 
@@ -55,15 +66,24 @@ Le bloc `.session-timer` est rendu avec `v-if="isClockedIn"`. Il disparaît donc
 
 Cette page est devenue une vue **lecture seule** de l'historique. Les boutons de création, modification et suppression ont été retirés. Le pointage se fait depuis le bouton du dashboard, pas depuis un formulaire manuel.
 
+### `frontend/src/components/HR.vue`
+
+C'est le tableau de bord RH / Administration. Il agrège les utilisateurs et leurs pointages pour afficher les indicateurs hebdomadaires, les statuts d'activité, les alertes de seuil, la recherche, les filtres et l'export CSV. Les données sont actuellement en lecture seule.
+
 ### `frontend/src/router/index.js`
 
-Le router expose seulement :
+Le router expose :
 
 - `/user` : dashboard ;
 - `/workingTimes/:userID` : historique en lecture seule ;
+- `/hr` : dashboard RH / Administration ;
 - toutes les autres URLs : redirection vers `/user`.
 
 Les anciens écrans génériques `ClockManager.vue` et `ChartManager.vue` restent dans le dépôt pour ne pas supprimer le travail des autres personnes, mais ils ne sont plus accessibles dans cette navigation utilisateur. L'ancien composant de formulaire `WorkingTime.vue` a été supprimé du frontend utilisateur pour éviter sa réintroduction accidentelle.
+
+### `frontend/src/services/api.js`
+
+Le service expose aussi `getUsers()`, utilisé par la vue RH pour charger la liste des collaborateurs avant de récupérer leurs pointages individuels.
 
 ## Styles et direction visuelle
 

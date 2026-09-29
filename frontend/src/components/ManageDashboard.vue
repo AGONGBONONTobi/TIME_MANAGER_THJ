@@ -7,11 +7,11 @@ export default {
       timerId: null,
       selectedIds: [],
       employees: [
-        { id: 1, name: 'Joseph Martin',    role: 'Développeur', hours: 38.5, nights: 4, validated: false, missedClock: false },
-        { id: 2, name: 'Amélie Rousseau',  role: 'Designer',    hours: 35.0, nights: 1, validated: true,  missedClock: false },
-        { id: 3, name: 'Karim Benali',     role: 'Support',     hours: 32.5, nights: 5, validated: false, missedClock: true  },
-        { id: 4, name: 'Sophie Laurent',   role: 'Manager',     hours: 40.0, nights: 0, validated: true,  missedClock: false },
-        { id: 5, name: 'Thomas Petit',     role: 'Commercial',  hours: 28.0, nights: 2, validated: false, missedClock: true  }
+        { id: 1, name: 'Joseph Martin',   role: 'Développeur', hours: 38.5, nights: 4, validated: false, missedClock: false },
+        { id: 2, name: 'Amélie Rousseau', role: 'Designer',    hours: 35.0, nights: 1, validated: true,  missedClock: false },
+        { id: 3, name: 'Karim Benali',    role: 'Support',     hours: 32.5, nights: 5, validated: false, missedClock: true  },
+        { id: 4, name: 'Sophie Laurent',  role: 'Manager',     hours: 40.0, nights: 0, validated: true,  missedClock: false },
+        { id: 5, name: 'Thomas Petit',    role: 'Commercial',  hours: 28.0, nights: 2, validated: false, missedClock: true  }
       ]
     }
   },
@@ -21,6 +21,12 @@ export default {
         weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
       }).format(this.now)
     },
+    currentTime() {
+      return new Intl.DateTimeFormat('fr-FR', {
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+      }).format(this.now)
+    },
+    timeParts() { return this.currentTime.split(':') },
     teamSize()     { return this.employees.length },
     pendingCount() { return this.employees.filter(e => !e.validated).length },
     totalNights()  { return this.employees.reduce((t, e) => t + e.nights, 0) },
@@ -31,7 +37,7 @@ export default {
     allSelected()  { return this.employees.length > 0 && this.selectedIds.length === this.employees.length }
   },
   mounted() {
-    this.timerId = window.setInterval(() => { this.now = new Date() }, 60000)
+    this.timerId = window.setInterval(() => { this.now = new Date() }, 1000)
   },
   beforeUnmount() {
     window.clearInterval(this.timerId)
@@ -70,11 +76,22 @@ export default {
         <h1>Bonjour, Manager</h1>
         <p class="dashboard-date">{{ todayLabel }}</p>
       </div>
+      <div class="clock-box">
+        <span class="clock-label">Heure locale</span>
+        <div class="flip-clock" aria-label="Heure actuelle">
+          <template v-for="(part, partIndex) in timeParts" :key="partIndex">
+            <div class="flip-group">
+              <span v-for="(digit, digitIndex) in part.split('')" :key="`${partIndex}-${digitIndex}-${digit}`" class="flip-digit">{{ digit }}</span>
+            </div>
+            <span v-if="partIndex < 2" class="flip-separator">:</span>
+          </template>
+        </div>
+      </div>
     </div>
 
     <!-- Alertes automatiques : nuits > 3 -->
     <div v-if="alerts.length" class="alert-banner" role="alert">
-      <span class="alert-icon">⚠️</span>
+      <span class="alert-mark" aria-hidden="true"></span>
       <div>
         <strong>Alerte — dépassement du seuil de nuits travaillées</strong>
         <ul>
@@ -88,22 +105,18 @@ export default {
     <!-- 4 stats globales -->
     <div class="stats-grid">
       <article class="stat-card blue">
-        <span class="stat-icon">👥</span>
         <p>Membres de l'équipe</p>
         <strong>{{ teamSize }}</strong>
       </article>
       <article class="stat-card amber">
-        <span class="stat-icon">⏳</span>
         <p>Timesheets en attente</p>
         <strong>{{ pendingCount }}</strong>
       </article>
       <article class="stat-card violet">
-        <span class="stat-icon">🌙</span>
         <p>Nuits travaillées (semaine)</p>
         <strong>{{ totalNights }}</strong>
       </article>
       <article class="stat-card red">
-        <span class="stat-icon">⚠️</span>
         <p>Oublis de pointage</p>
         <strong>{{ missedCount }}</strong>
       </article>
@@ -165,17 +178,19 @@ export default {
           <span class="cell-name">
             <b>{{ emp.name }}</b>
             <small>{{ emp.role }}</small>
-            <b v-if="emp.missedClock" class="badge-missed">⚠️ Oubli de pointage</b>
+            <b v-if="emp.missedClock" class="badge-missed">
+              <i></i>Oubli de pointage
+            </b>
           </span>
           <span><b>{{ emp.hours.toFixed(1) }} h</b></span>
           <span>
             <b class="badge-nights" :class="{ danger: emp.nights > 3 }">
-              🌙 {{ emp.nights }}
+              {{ emp.nights }}
             </b>
           </span>
           <span>
             <b class="row-status" :class="{ pending: !emp.validated }">
-              {{ emp.validated ? '✅ Validé' : '⏳ En attente' }}
+              <i></i>{{ emp.validated ? 'Validé' : 'En attente' }}
             </b>
           </span>
           <span class="cell-actions">
@@ -224,9 +239,19 @@ export default {
 .welcome-row h1 { margin: 0; font: 800 clamp(25px, 4vw, 34px) 'Manrope', sans-serif; letter-spacing: -.055em; }
 .dashboard-date { margin: 8px 0 0; color: #8c96a5; font-size: 13px; text-transform: capitalize; }
 
+/* Horloge */
+.clock-box { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.clock-label { color: #a0a8b4; font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.flip-clock { display: flex; align-items: center; justify-content: flex-end; gap: 5px; }
+.flip-group { display: flex; gap: 3px; }
+.flip-digit { display: grid; width: 28px; height: 38px; place-items: center; color: #fff; font: 800 20px 'Manrope', sans-serif; background: #1e2530; border-radius: 6px; }
+.flip-separator { color: #8f98a6; font-size: 20px; font-weight: 700; }
+
 /* Alertes */
 .alert-banner { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 20px; padding: 16px 18px; background: #fff5f0; border-left: 4px solid #e85d65; border-radius: 10px; color: #7a3b40; }
-.alert-banner .alert-icon { font-size: 20px; line-height: 1; }
+.alert-mark { flex: 0 0 auto; width: 22px; height: 22px; margin-top: 2px; border: 2px solid #e85d65; border-radius: 50%; position: relative; }
+.alert-mark::before { content: ''; position: absolute; top: 4px; left: 50%; width: 2px; height: 8px; background: #e85d65; transform: translateX(-50%); border-radius: 1px; }
+.alert-mark::after { content: ''; position: absolute; bottom: 3px; left: 50%; width: 3px; height: 3px; background: #e85d65; border-radius: 50%; transform: translateX(-50%); }
 .alert-banner strong { display: block; color: #b6444d; font-size: 13px; margin-bottom: 6px; }
 .alert-banner ul { margin: 0; padding-left: 18px; font-size: 12px; }
 .alert-banner b { color: #b6444d; }
@@ -234,7 +259,6 @@ export default {
 /* Stats */
 .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
 .stat-card { position: relative; padding: 18px; background: #fff; border: 1px solid #eaedf2; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 25px #29375608; }
-.stat-card .stat-icon { position: absolute; top: 14px; right: 16px; font-size: 18px; opacity: .85; }
 .stat-card p { margin: 0 0 12px; color: #8c96a5; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
 .stat-card strong { color: #293140; font: 800 28px 'Manrope', sans-serif; letter-spacing: -.04em; }
 .stat-card::before { content: ''; position: absolute; inset: 0 0 auto; height: 3px; }
@@ -260,10 +284,12 @@ export default {
 .cell-name { display: flex; flex-direction: column; gap: 3px; }
 .cell-name b { color: #303847; font-size: 12px; }
 .cell-name small { color: #9aa3af; font-size: 10px; }
-.badge-missed { display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; padding: 2px 8px; color: #b6444d; font-size: 9px; font-weight: 700; background: #fff0f1; border-radius: 99px; width: fit-content; }
+.badge-missed { display: inline-flex; align-items: center; gap: 5px; margin-top: 2px; padding: 2px 8px; color: #b6444d; font-size: 9px; font-weight: 700; background: #fff0f1; border-radius: 99px; width: fit-content; }
+.badge-missed i { width: 6px; height: 6px; background: #e85d65; border-radius: 50%; }
 .badge-nights { display: inline-block; padding: 3px 9px; color: #4b3fc4; background: #ece9ff; border-radius: 99px; font-size: 11px; font-weight: 700; }
 .badge-nights.danger { color: #b6444d; background: #fff0f1; }
-.row-status { font-size: 11px; color: #43ae76; }
+.row-status { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: #43ae76; }
+.row-status i { width: 7px; height: 7px; background: currentColor; border-radius: 50%; }
 .row-status.pending { color: #e0a020; }
 .cell-actions { display: flex; gap: 12px; }
 .link-btn { padding: 0; color: #786be7; font-size: 11px; font-weight: 700; background: none; border: 0; cursor: pointer; }
@@ -282,12 +308,15 @@ export default {
 @media (max-width: 850px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 760px) {
   .welcome-row { display: block; }
+  .clock-box { align-items: flex-start; margin-top: 14px; }
+  .flip-clock { justify-content: flex-start; }
   .section-title { flex-direction: column; align-items: stretch; }
   .bar-row { grid-template-columns: 110px 1fr; }
 }
 @media (max-width: 450px) {
   .stats-grid { grid-template-columns: 1fr; }
   .team-section, .chart-section { padding: 17px; }
+  .flip-digit { width: 24px; height: 34px; font-size: 18px; }
   .bar-row { grid-template-columns: 90px 1fr; }
 }
 </style>

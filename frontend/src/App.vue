@@ -2,7 +2,25 @@
 export default {
   name: 'App',
   data() {
-    return { currentUserId: 1, isNavOpen: false, isProfileOpen: false }
+    return {
+      currentUserId: 1,
+      isNavOpen: false,
+      isProfileOpen: false,
+      lastDashboard: 'user'
+    }
+  },
+  computed: {
+    dashboardTarget() {
+      return this.lastDashboard === 'manager-dashboard'
+        ? { path: '/manager-dashboard' }
+        : { name: 'user' }
+    }
+  },
+  watch: {
+    '$route'(route) {
+      if (route.path === '/manager-dashboard') this.lastDashboard = 'manager-dashboard'
+      else if (route.name === 'user') this.lastDashboard = 'user'
+    }
   },
   methods: {
     closeNav() { this.isNavOpen = false },
@@ -11,7 +29,10 @@ export default {
       if (event.key === 'Escape') { this.isNavOpen = false; this.isProfileOpen = false }
     }
   },
-  mounted() { window.addEventListener('keydown', this.handleEscape) },
+  mounted() {
+    window.addEventListener('keydown', this.handleEscape)
+    if (this.$route.path === '/manager-dashboard') this.lastDashboard = 'manager-dashboard'
+  },
   beforeUnmount() { window.removeEventListener('keydown', this.handleEscape) }
 }
 </script>
@@ -23,7 +44,7 @@ export default {
       <div class="brand"><span class="brand-symbol"><i></i></span><span>Time Manager</span></div>
       <nav class="sidebar-nav" aria-label="Navigation principale">
         <p class="nav-section-title">Navigation</p>
-        <router-link class="sidebar-link is-selected" :to="{ name: 'user' }" @click="closeNav"><span class="nav-icon">⌂</span><span>Tableau de bord</span><span class="nav-arrow">›</span></router-link>
+        <router-link class="sidebar-link" :class="{ 'is-selected': $route.path === '/manager-dashboard' || $route.name === 'user' }" :to="dashboardTarget" @click="closeNav"><span class="nav-icon">⌂</span><span>Tableau de bord</span><span class="nav-arrow">›</span></router-link>
         <p class="nav-section-title nav-section-spaced">Mon espace</p>
         <router-link class="sidebar-link" :to="{ name: 'workingTimes', params: { userID: currentUserId } }" @click="closeNav"><span class="nav-icon">◷</span><span>Historique</span><span class="nav-arrow">›</span></router-link>
       </nav>

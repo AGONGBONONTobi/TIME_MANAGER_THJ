@@ -17,9 +17,13 @@ const routes = [
     component: User
   },
   {
-    path: '/hr',
-    name: 'hr',
+    path: '/admin-dashboard',
+    name: 'adminDashboard',
     component: HR
+  },
+  {
+    path: '/hr',
+    redirect: { name: 'adminDashboard' }
   },
   {
     path: '/manager-dashboard',

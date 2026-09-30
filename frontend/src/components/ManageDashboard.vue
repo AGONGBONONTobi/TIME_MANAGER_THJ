@@ -89,6 +89,8 @@ export default {
       </div>
     </div>
 
+    <p class="demo-notice" role="status"><strong>Mode démonstration.</strong> Les employés et validations affichés ici sont locaux en attendant les endpoints backend.</p>
+
     <!-- Alertes automatiques : nuits > 3 -->
     <div v-if="alerts.length" class="alert-banner" role="alert">
       <span class="alert-mark" aria-hidden="true"></span>
@@ -184,7 +186,7 @@ export default {
           </span>
           <span><b>{{ emp.hours.toFixed(1) }} h</b></span>
           <span>
-            <b class="badge-nights" :class="{ danger: emp.nights > 3 }">
+            <b class="badge-nights" :class="{ danger: emp.nights > 3 }" :aria-label="`${emp.nights} nuit${emp.nights > 1 ? 's' : ''} travaillée${emp.nights > 1 ? 's' : ''}`">
               {{ emp.nights }}
             </b>
           </span>
@@ -233,6 +235,7 @@ export default {
 
 <style scoped>
 .dashboard-page { max-width: 1120px; margin: 0 auto; color: #252b38; }
+.demo-notice { margin: -8px 0 20px; padding: 11px 14px; color: #6f5a1b; font-size: 12px; background: #fff8df; border-left: 3px solid #f0ad32; }
 .welcome-row, .section-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
 .welcome-row { align-items: flex-end; margin-bottom: 24px; }
 .dashboard-kicker, .card-kicker { margin: 0 0 8px; color: #8a7cf0; font-size: 10px; font-weight: 800; letter-spacing: .12em; }

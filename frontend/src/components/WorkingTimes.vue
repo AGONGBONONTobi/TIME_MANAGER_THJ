@@ -11,6 +11,8 @@
       </div>
     </div>
 
+    <p v-if="errorMessage" class="error-message" role="alert">{{ errorMessage }}</p>
+
     <div class="timeline-summary">
       <div><span class="summary-label">Sessions visibles</span><strong>{{ workingTimes.length }}</strong></div>
       <div><span class="summary-label">Temps cumulé</span><strong>{{ totalDuration }}</strong></div>
@@ -40,7 +42,7 @@ import api from '../services/api'
 export default {
   name: 'WorkingTimes',
   data() {
-    return { userId: this.$route.params.userID, workingTimes: [], isLoading: false }
+    return { userId: this.$route.params.userID, workingTimes: [], isLoading: false, errorMessage: '' }
   },
   computed: {
     sortedWorkingTimes() { return [...this.workingTimes].sort((a, b) => new Date(b.start) - new Date(a.start)) },
@@ -57,11 +59,12 @@ export default {
   methods: {
     async getWorkingTimes() {
       this.isLoading = true
+      this.errorMessage = ''
       try {
         const response = await api.getWorkingTimes(this.userId)
-        this.workingTimes = response.data.data
-      } catch (error) {
-        console.error(error)
+        this.workingTimes = response.data.data || []
+      } catch {
+        this.errorMessage = 'Impossible de charger les sessions. Vérifiez que l’API est démarrée.'
       } finally {
         this.isLoading = false
       }

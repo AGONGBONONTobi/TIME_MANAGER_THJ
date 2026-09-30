@@ -4,7 +4,7 @@ import api from '../services/api'
 export default {
   name: 'UserPage',
   data() {
-    return { userId: 1, now: new Date(), workingTimes: [], isLoading: true, isClocking: false, errorMessage: '', timerId: null }
+    return { userId: 1, user: null, now: new Date(), workingTimes: [], isLoading: true, isClocking: false, errorMessage: '', timerId: null }
   },
   computed: {
     todayLabel() { return new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }).format(this.now) },
@@ -21,17 +21,36 @@ export default {
     quotaPercentage() { return Math.min(100, Math.round((this.weekMinutes / (35 * 60)) * 100)) },
     quotaColor() { return this.quotaPercentage < 50 ? 'danger' : this.quotaPercentage < 70 ? 'warning' : 'success' },
     quotaMessage() { if (this.quotaPercentage >= 70) return 'Bravo, objectif atteint !'; const remaining = Math.max(0, Math.ceil((35 * 0.7 * 60 - this.weekMinutes) / 60)); return `Encore ${remaining} heure${remaining > 1 ? 's' : ''} pour atteindre l'objectif.` },
-    nightMinutes() { return this.weekSessions.filter((session) => this.isNightSession(session)).reduce((total, session) => total + this.durationInMinutes(session), 0) },
+    nightMinutes() { return this.weekSessions.reduce((total, session) => total + this.nightMinutesForSession(session), 0) },
     nightHoursLabel() { return `${(this.nightMinutes / 60).toFixed(1)} h` },
     overtimeMinutes() { return Math.max(0, this.weekMinutes - 35 * 60) },
     balanceLabel() { const minutes = this.weekMinutes - 35 * 60; return `${minutes >= 0 ? '+' : '-'}${Math.floor(Math.abs(minutes) / 60)}h${Math.abs(minutes) % 60 ? ` ${Math.abs(minutes) % 60}m` : ''}` },
     chartWorked() { return this.chartValues((session) => this.durationInMinutes(session) / 60) },
-    chartNight() { return this.chartValues((session) => this.isNightSession(session) ? this.durationInMinutes(session) / 60 : 0) },
+    chartNight() { return this.chartValues((session) => this.nightMinutesForSession(session) / 60) },
+    chartDayLabels() { return ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'] },
     recentSessions() { return this.workingTimes.slice(0, 10) }
   },
   mounted() { this.loadWorkingTimes(); this.timerId = window.setInterval(() => { this.now = new Date() }, 1000) },
   beforeUnmount() { window.clearInterval(this.timerId) },
   methods: {
+    async getUser() {
+      const response = await api.getUser(this.userId)
+      this.user = response.data.data
+      return this.user
+    },
+    async createUser(user) {
+      const response = await api.createUser(user)
+      return response.data.data
+    },
+    async updateUser(user) {
+      const response = await api.updateUser(this.userId, user)
+      this.user = response.data.data
+      return this.user
+    },
+    async deleteUser() {
+      await api.deleteUser(this.userId)
+      this.user = null
+    },
     async loadWorkingTimes() {
       this.isLoading = true; this.errorMessage = ''
       try { const response = await api.getWorkingTimes(this.userId); this.workingTimes = (response.data.data || []).sort((a, b) => new Date(b.start) - new Date(a.start)) }
@@ -45,6 +64,19 @@ export default {
       finally { this.isClocking = false }
     },
     durationInMinutes(session) { return Math.max(0, Math.round((new Date(session.end || this.now) - new Date(session.start)) / 60000)) },
+    nightMinutesForSession(session) {
+      const start = new Date(session.start)
+      const end = new Date(session.end || this.now)
+      let cursor = start
+      let minutes = 0
+      while (cursor < end) {
+        const nextMinute = new Date(Math.min(cursor.getTime() + 60000, end.getTime()))
+        const hour = cursor.getHours()
+        if (hour >= 21 || hour < 6) minutes += (nextMinute - cursor) / 60000
+        cursor = nextMinute
+      }
+      return Math.round(minutes)
+    },
     chartValues(valueFor) {
       const values = Array(7).fill(0)
       this.weekSessions.forEach((session) => {
@@ -57,7 +89,7 @@ export default {
       const max = 8
       return values.map((value, index) => `${34 + index * 83},${142 - Math.min(value, max) / max * 112}`).join(' ')
     },
-    isNightSession(session) { const hour = new Date(session.start).getHours(); return hour >= 21 || hour < 6 },
+    isNightSession(session) { return this.nightMinutesForSession(session) > 0 },
     formatSessionDate(value) { return new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(value)) },
     formatSessionTime(value) { return new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }).format(new Date(value)) },
     formatDuration(session) { const minutes = this.durationInMinutes(session); return minutes >= 60 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m` : `${minutes} min` }
@@ -68,13 +100,13 @@ export default {
 <template>
   <section class="dashboard-page">
     <div class="welcome-row"><div><p class="dashboard-kicker">TABLEAU DE BORD</p><h1>Bonjour, Joseph</h1><p class="dashboard-date">{{ todayLabel }}</p></div></div>
-    <p v-if="errorMessage" class="api-error" role="alert">{{ errorMessage }} <button type="button" @click="loadWorkingTimes">Réessayer</button></p>
+    <p v-if="errorMessage" class="api-error" role="alert" aria-live="assertive">{{ errorMessage }} <button type="button" @click="loadWorkingTimes">Réessayer</button></p>
     <div class="dashboard-grid">
       <article class="attendance-card" :class="{ active: isClockedIn }"><div class="card-heading"><div><p class="card-kicker">PRÉSENCE DU JOUR</p><h2>{{ isClockedIn ? 'Votre journée est en cours' : 'Prêt à commencer ?' }}</h2></div><span class="status-pill" :class="{ active: isClockedIn }"><i></i>{{ isClockedIn ? 'Actif' : 'Inactif' }}</span></div><div class="attendance-main"><div class="session-mark" :class="{ active: isClockedIn }"></div><div><strong class="attendance-state">{{ isClockedIn ? 'Clock In enregistré' : 'Aucune session active' }}</strong><p>{{ isClockedIn ? `Depuis ${formatSessionTime(activeSession.start)} · ${elapsedLabel}` : 'Enregistrez votre arrivée pour démarrer le chronomètre.' }}</p></div></div><div v-if="isClockedIn" class="session-timer"><span>Temps écoulé</span><strong>{{ elapsedLabel }}</strong></div><button class="clock-action" :class="{ 'clock-out': isClockedIn }" type="button" :disabled="isClocking || isLoading" @click="toggleClock"><span>{{ isClocking ? 'Enregistrement…' : isClockedIn ? 'Clock Out' : 'Clock In' }}</span><b>→</b></button></article>
       <article class="live-time-card"><div class="card-heading"><div><p class="card-kicker">HEURE LOCALE</p><h2>Il est actuellement</h2></div><span class="live-dot"><i></i> Live</span></div><div class="flip-clock" aria-label="Heure actuelle"><template v-for="(part, partIndex) in timeParts" :key="partIndex"><div class="flip-group"><span v-for="(digit, digitIndex) in part.split('')" :key="`${partIndex}-${digitIndex}-${digit}`" class="flip-digit">{{ digit }}</span></div><span v-if="partIndex < 2" class="flip-separator">:</span></template></div><p class="clock-caption">Votre fuseau horaire local</p></article>
     </div>
     <section class="quota-section"><div class="section-title"><div><p class="card-kicker">OBJECTIF HEBDOMADAIRE</p><h2>Votre quota de la semaine</h2></div><strong class="quota-ratio">{{ quotaPercentage }}% <small>/ 70%</small></strong></div><div class="quota-content"><div class="quota-ring" :class="quotaColor" :style="{ '--progress': `${quotaPercentage}%` }"><span>{{ quotaPercentage }}<small>%</small></span></div><div class="quota-copy"><strong>{{ weekHoursLabel }} travaillées cette semaine</strong><p>{{ quotaMessage }}</p><div class="quota-bar"><span :style="{ width: `${quotaPercentage}%` }"></span><i></i></div><div class="quota-scale"><span>0 h</span><span>Objectif : 24,5 h</span><span>35 h</span></div></div></div></section>
-    <section class="activity-chart"><div class="chart-header"><div><p class="card-kicker">RYTHME DE LA SEMAINE</p><h2>Activité utilisateur</h2></div><span class="chart-menu">···</span></div><div class="chart-canvas"><svg viewBox="0 0 620 180" role="img" aria-label="Activité de la semaine"><line v-for="line in [30, 86, 142]" :key="line" x1="34" :y1="line" x2="586" :y2="line" class="chart-grid-line" /><text v-for="(label, index) in ['0h', '4h', '8h']" :key="label" x="0" :y="146 - index * 56" class="chart-axis-label">{{ label }}</text><polyline :points="chartLine(chartWorked)" class="chart-line worked" /><polyline :points="chartLine(Array(7).fill(7))" class="chart-line target" /><polyline :points="chartLine(chartNight)" class="chart-line night" /><text v-for="(label, index) in ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']" :key="label" :x="27 + index * 83" y="169" class="chart-day-label">{{ label }}</text></svg></div><div class="chart-legend"><span><i class="worked"></i>Heures travaillées</span><span><i class="target"></i>Objectif journalier</span><span><i class="night"></i>Heures de nuit</span></div></section>
+    <section class="activity-chart"><div class="chart-header"><div><p class="card-kicker">RYTHME DE LA SEMAINE</p><h2>Activité utilisateur</h2></div><span class="chart-menu" aria-hidden="true">···</span></div><div class="chart-canvas"><svg viewBox="0 0 620 180" role="img" aria-label="Activité de la semaine"><line v-for="line in [30, 86, 142]" :key="line" x1="34" :y1="line" x2="586" :y2="line" class="chart-grid-line" /><text v-for="(label, index) in ['0h', '4h', '8h']" :key="label" x="0" :y="146 - index * 56" class="chart-axis-label">{{ label }}</text><polyline :points="chartLine(chartWorked)" class="chart-line worked" /><polyline :points="chartLine(Array(7).fill(7))" class="chart-line target" /><polyline :points="chartLine(chartNight)" class="chart-line night" /><text v-for="(label, index) in ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']" :key="label" :x="27 + index * 83" y="169" class="chart-day-label">{{ label }}</text></svg></div><ul class="chart-data sr-only"><li v-for="(label, index) in chartDayLabels" :key="label">{{ label }} : {{ chartWorked[index] }} heure(s) travaillée(s), dont {{ chartNight[index] }} heure(s) de nuit.</li></ul><div class="chart-legend"><span><i class="worked" aria-hidden="true"></i>Heures travaillées</span><span><i class="target" aria-hidden="true"></i>Objectif journalier</span><span><i class="night" aria-hidden="true"></i>Heures de nuit</span></div></section>
     <section class="weekly-section"><div class="section-title"><div><p class="card-kicker">STATISTIQUES DE LA SEMAINE</p><h2>Une vue claire de vos heures</h2></div></div><div class="weekly-grid"><article class="weekly-card"><div class="stat-accent blue"></div><span>Heures travaillées</span><strong>{{ weekHoursLabel }}</strong><small>Cette semaine</small></article><article class="weekly-card"><div class="stat-accent violet"></div><span>Heures de nuit</span><strong>{{ nightHoursLabel }}</strong><small>21h — 6h</small></article><article class="weekly-card"><div class="stat-accent amber"></div><span>Heures d'astreinte</span><strong>0.0 h</strong><small>Non applicable</small></article><article class="weekly-card"><div class="stat-accent" :class="overtimeMinutes ? 'green' : 'gray'"></div><span>Solde d'heures</span><strong>{{ balanceLabel }}</strong><small>{{ overtimeMinutes ? 'À payer' : 'À récupérer' }}</small></article></div></section>
     <section class="history-section"><div class="section-title"><div><p class="card-kicker">ACTIVITÉ RÉCENTE</p><h2>Vos derniers pointages</h2></div><button class="refresh-link" type="button" :disabled="isLoading" @click="loadWorkingTimes">Actualiser <span>↻</span></button></div><div v-if="isLoading" class="history-placeholder">Chargement des pointages…</div><div v-else-if="recentSessions.length" class="table-wrap"><div class="session-table session-table-head"><span>Date</span><span>Début</span><span>Fin</span><span>Durée</span><span>Type</span><span>État</span></div><div v-for="session in recentSessions" :key="session.id" class="session-table"><span class="table-date">{{ formatSessionDate(session.start) }}</span><span>{{ formatSessionTime(session.start) }}</span><span>{{ session.end ? formatSessionTime(session.end) : '—' }}</span><span class="table-duration">{{ formatDuration(session) }}</span><span><b class="type-badge" :class="{ night: isNightSession(session) }"><i></i>{{ isNightSession(session) ? 'Nuit' : 'Jour' }}</b></span><span><b class="row-status" :class="{ ongoing: !session.end }">{{ session.end ? 'Terminé' : 'En cours' }}</b></span></div></div><div v-else class="empty-history"><span class="empty-mark"></span><div><strong>Aucun pointage récent</strong><p>Votre historique apparaîtra ici après votre première session.</p></div></div></section>
   </section>
@@ -96,4 +128,5 @@ export default {
 @media (max-width: 850px) { .weekly-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 760px) { .welcome-row { display: block; }.role-switcher { margin-top: 18px; justify-content: space-between; }.dashboard-grid { grid-template-columns: 1fr; }.quota-content { align-items: flex-start; flex-direction: column; }.quota-ring { align-self: center; } }
 @media (max-width: 450px) { .attendance-card, .live-time-card, .quota-section, .weekly-section, .history-section { padding: 17px; }.flip-clock { gap: 4px; }.flip-digit { width: 28px; height: 39px; font-size: 20px; }.flip-separator { font-size: 19px; }.weekly-grid { grid-template-columns: 1fr; }.quota-scale { font-size: 9px; } }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 </style>

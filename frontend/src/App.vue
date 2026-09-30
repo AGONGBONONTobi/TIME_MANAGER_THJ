@@ -6,6 +6,7 @@ export default {
       currentUserId: 1,
       isNavOpen: false,
       isProfileOpen: false,
+      isHelpOpen: false,
       lastDashboard: 'user'
     }
   },
@@ -25,8 +26,9 @@ export default {
   methods: {
     closeNav() { this.isNavOpen = false },
     toggleNav() { this.isNavOpen = !this.isNavOpen },
+    toggleHelp() { this.isHelpOpen = !this.isHelpOpen },
     handleEscape(event) {
-      if (event.key === 'Escape') { this.isNavOpen = false; this.isProfileOpen = false }
+      if (event.key === 'Escape') { this.isNavOpen = false; this.isProfileOpen = false; this.isHelpOpen = false }
     }
   },
   mounted() {
@@ -38,28 +40,41 @@ export default {
 </script>
 
 <template>
+  <a class="skip-link" href="#main-content">Aller au contenu principal</a>
   <div class="app-shell">
     <div v-if="isNavOpen" class="mobile-scrim" aria-hidden="true" @click="closeNav"></div>
     <aside class="sidebar" :class="{ 'is-open': isNavOpen }">
-      <div class="brand"><span class="brand-symbol"><i></i></span><span>Time Manager</span></div>
+      <div class="brand"><span class="brand-symbol" aria-hidden="true"><i></i></span><span>Time Manager</span></div>
       <nav class="sidebar-nav" aria-label="Navigation principale">
         <p class="nav-section-title">Navigation</p>
-        <router-link class="sidebar-link" :class="{ 'is-selected': $route.path === '/manager-dashboard' || $route.name === 'user' }" :to="dashboardTarget" @click="closeNav"><span class="nav-icon">⌂</span><span>Tableau de bord</span><span class="nav-arrow">›</span></router-link>
+        <router-link class="sidebar-link" :class="{ 'is-selected': $route.path === '/manager-dashboard' || $route.name === 'user' }" :to="dashboardTarget" @click="closeNav"><span class="nav-icon" aria-hidden="true">⌂</span><span>Tableau de bord</span><span class="nav-arrow" aria-hidden="true">›</span></router-link>
         <p class="nav-section-title nav-section-spaced">Mon espace</p>
-        <router-link class="sidebar-link" :to="{ name: 'workingTimes', params: { userID: currentUserId } }" @click="closeNav"><span class="nav-icon">◷</span><span>Historique</span><span class="nav-arrow">›</span></router-link>
+        <router-link class="sidebar-link" :to="{ name: 'workingTimes', params: { userID: currentUserId } }" @click="closeNav"><span class="nav-icon" aria-hidden="true">◷</span><span>Historique</span><span class="nav-arrow" aria-hidden="true">›</span></router-link>
+        <router-link class="sidebar-link" :to="{ name: 'clock', params: { userID: currentUserId } }" @click="closeNav"><span class="nav-icon" aria-hidden="true">◉</span><span>Pointage</span><span class="nav-arrow" aria-hidden="true">›</span></router-link>
+        <router-link class="sidebar-link" :to="{ name: 'chartManager', params: { userID: currentUserId } }" @click="closeNav"><span class="nav-icon" aria-hidden="true">▥</span><span>Graphiques</span><span class="nav-arrow" aria-hidden="true">›</span></router-link>
       </nav>
-      <div class="sidebar-footer"><div class="sidebar-help"><span class="help-orb">?</span><div><strong>Besoin d'aide ?</strong><small>Consulter le centre d'aide</small></div></div><div class="sidebar-version">TIME MANAGER <span>v1.0</span></div></div>
+      <div class="sidebar-footer"><button class="sidebar-help" type="button" @click="toggleHelp"><span class="help-orb" aria-hidden="true">?</span><span><strong>Besoin d'aide ?</strong><small>Ouvrir le centre d'aide</small></span></button><div class="sidebar-version">TIME MANAGER <span>v1.0</span></div></div>
     </aside>
     <div class="main-shell">
       <header class="topbar">
         <button class="menu-toggle" type="button" aria-label="Ouvrir la navigation" :aria-expanded="isNavOpen" @click="toggleNav"><span></span><span></span><span></span></button>
         <div class="page-heading"><span class="page-heading-dot"></span><span>Mon espace</span></div>
         <div class="topbar-actions">
-          <button class="profile-button" type="button" @click="isProfileOpen = !isProfileOpen"><span class="avatar avatar-small">JW</span><span class="profile-copy"><strong>Joseph William</strong><small>Utilisateur</small></span><span class="profile-chevron">⌄</span></button>
-          <div v-if="isProfileOpen" class="profile-menu"><strong>Joseph William</strong><span>Espace utilisateur</span><button type="button" @click="isProfileOpen = false">Fermer</button></div>
+          <button class="profile-button" type="button" :aria-expanded="isProfileOpen" aria-controls="profile-menu" @click="isProfileOpen = !isProfileOpen"><span class="avatar avatar-small" aria-hidden="true">JW</span><span class="profile-copy"><strong>Joseph William</strong><small>Utilisateur</small></span><span class="profile-chevron" aria-hidden="true">⌄</span></button>
+            <div v-if="isProfileOpen" id="profile-menu" class="profile-menu"><strong>Joseph William</strong><span>Espace utilisateur</span><button type="button" @click="isProfileOpen = false">Fermer</button></div>
         </div>
       </header>
-      <main class="app-content"><router-view /></main>
+      <main id="main-content" class="app-content" tabindex="-1"><router-view /></main>
+    </div>
+    <div v-if="isHelpOpen" class="help-backdrop" @click.self="toggleHelp">
+      <section class="help-dialog" role="dialog" aria-modal="true" aria-labelledby="help-title">
+        <button class="help-close" type="button" aria-label="Fermer le centre d'aide" @click="toggleHelp">×</button>
+        <p class="help-kicker">CENTRE D'AIDE</p>
+        <h2 id="help-title">Pointez sans ordinateur</h2>
+        <p>Depuis un téléphone, ouvrez <strong>Pointage</strong>, puis utilisez le bouton Clock In au début de votre service et Clock Out à la fin.</p>
+        <div class="help-steps"><strong>Besoin d'accompagnement ?</strong><span>Demandez une démonstration à votre manager ou consultez la note interne de votre équipe.</span></div>
+        <button class="help-action" type="button" @click="toggleHelp">J'ai compris</button>
+      </section>
     </div>
   </div>
 </template>
@@ -73,4 +88,9 @@ export default {
 .main-shell { min-height: 100vh; margin-left: 276px; }.topbar { position: relative; z-index: 10; display: flex; align-items: center; justify-content: space-between; height: 72px; padding: 0 38px; background: #fff; border-bottom: 1px solid #edf0f4; }.page-heading { display: flex; align-items: center; gap: 10px; color: #303744; font: 700 16px 'Manrope', sans-serif; }.page-heading-dot { width: 8px; height: 8px; background: #9a8cff; border-radius: 50%; }.topbar-actions { position: relative; display: flex; align-items: center; gap: 22px; }.notification-button { position: relative; width: 28px; height: 30px; color: #445064; background: transparent; border: 0; cursor: pointer; }.bell { display: inline-block; font-size: 25px; transform: rotate(180deg); }.notification-button b { position: absolute; top: -4px; right: -1px; display: grid; width: 17px; height: 17px; place-items: center; color: #fff; font-size: 10px; background: #ed575f; border: 2px solid #fff; border-radius: 50%; }.profile-button { display: flex; align-items: center; gap: 10px; padding: 0; color: #4a5363; text-align: left; background: transparent; border: 0; cursor: pointer; }.avatar { display: grid; place-items: center; color: #6e4c31; font-weight: 700; background: #f2c696; border-radius: 50%; }.avatar-small { width: 38px; height: 38px; font-size: 11px; border: 3px solid #e7f3ff; }.profile-copy strong, .profile-copy small { display: block; }.profile-copy strong { font-size: 13px; }.profile-copy small { margin-top: 3px; color: #89919f; font-size: 11px; }.profile-chevron { color: #8d96a3; font-size: 16px; }.profile-menu { position: absolute; top: 49px; right: 0; display: grid; min-width: 190px; gap: 5px; padding: 15px; color: #3b4350; background: #fff; border: 1px solid #e8ebf0; border-radius: 10px; box-shadow: 0 12px 25px #24304718; }.profile-menu span { color: #89919f; font-size: 11px; }.profile-menu button { margin-top: 7px; padding: 6px 0; color: #7366dc; text-align: left; background: none; border: 0; cursor: pointer; }.menu-toggle { display: none; width: 34px; height: 34px; padding: 7px 5px; background: #fff; border: 1px solid #e4e8ef; border-radius: 7px; }.menu-toggle span { display: block; height: 2px; margin: 4px 2px; background: #566173; }.app-content { min-height: calc(100vh - 72px); padding: 32px 38px 48px; }.mobile-scrim { display: none; }
 @media (max-width: 850px) { .sidebar { width: 245px; transform: translateX(-100%); transition: transform .25s ease; }.sidebar.is-open { transform: translateX(0); }.mobile-scrim { position: fixed; z-index: 15; inset: 0; display: block; background: #11182770; }.main-shell { margin-left: 0; }.topbar { padding: 0 20px; }.menu-toggle { display: block; }.page-heading { margin-right: auto; margin-left: 15px; }.app-content { padding: 25px 20px 40px; } }
 @media (max-width: 520px) { .profile-copy, .profile-chevron { display: none; }.topbar-actions { gap: 10px; }.app-content { padding-right: 14px; padding-left: 14px; } }
+.skip-link { position: fixed; z-index: 100; top: -100px; left: 16px; padding: 10px 14px; color: #fff; background: #1d2430; border-radius: 7px; }.skip-link:focus { top: 16px; }
+.sidebar-link:focus-visible, .profile-button:focus-visible, .menu-toggle:focus-visible, .sidebar-help:focus-visible, button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid #f0ad32; outline-offset: 3px; }
+.sidebar-help { width: 100%; color: inherit; text-align: left; background: transparent; border-right: 0; border-left: 0; cursor: pointer; }
+.help-backdrop { position: fixed; z-index: 50; inset: 0; display: grid; place-items: center; padding: 20px; background: #11182799; }.help-dialog { position: relative; width: min(100%, 430px); padding: 28px; color: #293140; background: #fff; border-radius: 14px; box-shadow: 0 20px 60px #11182740; }.help-close { position: absolute; top: 12px; right: 14px; width: 36px; height: 36px; color: #5d6675; background: transparent; border: 0; font-size: 24px; cursor: pointer; }.help-kicker { margin: 0 0 8px; color: #786be7; font-size: 10px; font-weight: 800; letter-spacing: .12em; }.help-dialog h2 { margin: 0; font: 800 25px 'Manrope', sans-serif; }.help-dialog p:not(.help-kicker) { color: #5d6675; line-height: 1.6; }.help-steps { display: grid; gap: 5px; margin: 18px 0; padding: 13px; background: #f5f3ff; border-left: 3px solid #786be7; font-size: 12px; line-height: 1.5; }.help-steps span { color: #6d7480; }.help-action { min-height: 44px; padding: 0 16px; color: #fff; background: #786be7; border: 0; border-radius: 7px; font-weight: 700; cursor: pointer; }.app-content:focus { outline: none; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
 </style>

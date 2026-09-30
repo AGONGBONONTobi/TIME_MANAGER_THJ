@@ -6,11 +6,12 @@
         <h1>La journée, <em>en mouvement.</em></h1>
         <p class="intro">Chaque session devient un repère. Suis le rythme du travail sans perdre le fil.</p>
       </div>
-        <div class="header-actions">
+      <div class="header-actions">
         <button class="refresh-button" type="button" :disabled="isLoading" @click="getWorkingTimes">Actualiser</button>
-        <router-link :to="`/workingTime/${userId}`" class="new-session">Nouvelle session</router-link>
       </div>
     </div>
+
+    <p v-if="errorMessage" class="error-message" role="alert">{{ errorMessage }}</p>
 
     <div class="timeline-summary">
       <div><span class="summary-label">Sessions visibles</span><strong>{{ workingTimes.length }}</strong></div>
@@ -27,11 +28,11 @@
             <div><h2>{{ formatTime(wt.start) }} à {{ wt.end ? formatTime(wt.end) : 'maintenant' }}</h2><p>{{ wt.end ? 'Session clôturée' : 'Le chronomètre tourne actuellement' }}</p></div>
             <div class="session-duration"><span>durée</span><strong>{{ duration(wt) }}</strong></div>
           </div>
-          <div class="session-footer"><span>Référence #{{ wt.id }}</span><router-link :to="`/workingTime/${userId}/${wt.id}`">Modifier</router-link></div>
+          <div class="session-footer"><span>Référence #{{ wt.id }}</span><span>Lecture seule</span></div>
         </div>
       </article>
     </div>
-    <div v-else class="empty-state"><span class="empty-number">00</span><div><h2>Aucune session enregistrée</h2><p>La première entrée de cette timeline est encore à écrire.</p></div><router-link :to="`/workingTime/${userId}`" class="new-session">Commencer</router-link></div>
+    <div v-else class="empty-state"><span class="empty-number">00</span><div><h2>Aucune session enregistrée</h2><p>Les pointages apparaîtront ici après une action Clock In.</p></div></div>
   </section>
 </template>
 
@@ -41,7 +42,7 @@ import api from '../services/api'
 export default {
   name: 'WorkingTimes',
   data() {
-    return { userId: this.$route.params.userID, workingTimes: [], isLoading: false }
+    return { userId: this.$route.params.userID, workingTimes: [], isLoading: false, errorMessage: '' }
   },
   computed: {
     sortedWorkingTimes() { return [...this.workingTimes].sort((a, b) => new Date(b.start) - new Date(a.start)) },
@@ -58,11 +59,12 @@ export default {
   methods: {
     async getWorkingTimes() {
       this.isLoading = true
+      this.errorMessage = ''
       try {
         const response = await api.getWorkingTimes(this.userId)
-        this.workingTimes = response.data.data
-      } catch (error) {
-        console.error(error)
+        this.workingTimes = response.data.data || []
+      } catch {
+        this.errorMessage = 'Impossible de charger les sessions. Vérifiez que l’API est démarrée.'
       } finally {
         this.isLoading = false
       }

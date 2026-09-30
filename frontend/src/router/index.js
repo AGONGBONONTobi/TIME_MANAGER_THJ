@@ -1,26 +1,16 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import User from '../components/User.vue'
 import WorkingTimes from '../components/WorkingTimes.vue'
-import WorkingTime from '../components/WorkingTime.vue'
 import ClockManager from '../components/ClockManager.vue'
 import ChartManager from '../components/ChartManager.vue'
+import AdminDashboard from '../components/AdminDashboard.vue'
+import ManageDashboard from '@/components/ManageDashboard.vue'
+
 const routes = [
   {
     path: '/workingTimes/:userID',
     name: 'workingTimes',
     component: WorkingTimes,
-    props: true
-  },
-  {
-    path: '/workingTime/:userID',
-    name: 'workingTimeCreate',
-    component: WorkingTime,
-    props: true
-  },
-  {
-    path: '/workingTime/:userID/:workingtimeid',
-    name: 'workingTimeEdit',
-    component: WorkingTime,
     props: true
   },
   {
@@ -38,8 +28,22 @@ const routes = [
   {
     path: '/user',
     name: 'user',
-    component: User,
-    props: true
+    component: User
+  },
+  {
+    path: '/manager-dashboard',
+    name: 'managerDashboard',
+    component: ManageDashboard
+  },
+  {
+    path: '/admin-dashboard',
+    name: 'adminDashboard',
+    component: AdminDashboard,
+    meta: { demoOnly: true }
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: { name: 'user' }
   }
 ]
 

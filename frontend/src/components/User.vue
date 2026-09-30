@@ -1,88 +1,132 @@
-<template>
-  <div class="user-page">
-    <HeroSection />
-    <section class="user-console" aria-labelledby="user-console-title">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">Administration · identité</p>
-          <h2 id="user-console-title">Le poste de commande</h2>
-          <p class="section-intro">Retrouvez un profil, ajustez ses accès et gardez une trace nette de chaque action.</p>
-        </div>
-        <div class="record-mark" aria-hidden="true"><span>TM</span><small>FILE<br />{{ userId || 'Aucun' }}</small></div>
-      </div>
-        <div class="console-grid">
-        <form class="profile-panel" @submit.prevent="createUser">
-          <div class="panel-topline"><span class="panel-kicker">01 / Profil</span><span class="live-indicator"><i></i> Prêt</span></div>
-          <div class="form-grid">
-            <label><span>Identifiant utilisateur</span><input v-model="userId" type="text" placeholder="ex. 42" /></label>
-            <label><span>Nom d'utilisateur</span><input v-model="username" type="text" placeholder="Nom affiché" required /></label>
-            <label class="wide-field"><span>Adresse email</span><input v-model="email" type="email" placeholder="nom@exemple.com" required /></label>
-          </div>
-          <div class="action-row">
-            <button class="button button-dark" type="submit" :disabled="isLoading">Créer le profil</button>
-            <button class="button button-light" type="button" :disabled="isLoading" @click="getUser">Charger</button>
-            <button class="button button-outline" type="button" :disabled="isLoading || !userId" @click="updateUser">Mettre à jour</button>
-            <button class="button button-danger" type="button" :disabled="isLoading || !userId" @click="deleteUser">Supprimer</button>
-          </div>
-        </form>
-        <aside class="identity-panel">
-          <div class="identity-stamp">IDENTITÉ ACTIVE</div>
-          <div v-if="user" class="identity-content">
-            <div class="avatar">{{ initials }}</div><p class="identity-label">Compte sélectionné</p><h3>{{ user.username }}</h3>
-            <p>{{ user.email || email || 'Aucune adresse renseignée' }}</p><div class="identity-meta"><span>ID</span><strong>{{ user.id }}</strong></div>
-          </div>
-          <div v-else class="empty-identity"><span class="empty-line"></span><p>Aucun dossier ouvert</p><small>Charge un utilisateur pour faire apparaître son identité ici.</small></div>
-        </aside>
-      </div>
-      <p v-if="statusMessage" class="status-message" :class="`is-${statusKind}`" role="status">{{ statusMessage }}</p>
-    </section>
-  </div>
-</template>
-
 <script>
-import HeroSection from './HeroSection.vue'
 import api from '../services/api'
 
 export default {
   name: 'UserPage',
-  components: { HeroSection },
-  data() { return { userId: '', username: '', email: '', user: null, isLoading: false, statusMessage: '', statusKind: 'neutral' } },
-  computed: {
-    initials() { return (this.user?.username || this.username || 'U').split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() }
+  data() {
+    return { userId: 1, user: null, now: new Date(), workingTimes: [], isLoading: true, isClocking: false, errorMessage: '', timerId: null }
   },
+  computed: {
+    todayLabel() { return new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }).format(this.now) },
+    currentTime() { return new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(this.now) },
+    timeParts() { return this.currentTime.split(':') },
+    activeSession() { return this.workingTimes.find((session) => !session.end) || null },
+    isClockedIn() { return Boolean(this.activeSession) },
+    elapsedSeconds() { return this.activeSession ? Math.max(0, Math.floor((this.now - new Date(this.activeSession.start)) / 1000)) : 0 },
+    elapsedLabel() { const h = Math.floor(this.elapsedSeconds / 3600).toString().padStart(2, '0'); const m = Math.floor((this.elapsedSeconds % 3600) / 60).toString().padStart(2, '0'); const s = (this.elapsedSeconds % 60).toString().padStart(2, '0'); return `${h}:${m}:${s}` },
+    weekStart() { const date = new Date(this.now); const day = date.getDay() || 7; date.setHours(0, 0, 0, 0); date.setDate(date.getDate() - day + 1); return date },
+    weekSessions() { return this.workingTimes.filter((session) => new Date(session.start) >= this.weekStart) },
+    weekMinutes() { return this.weekSessions.reduce((total, session) => total + this.durationInMinutes(session), 0) },
+    weekHoursLabel() { return `${(this.weekMinutes / 60).toFixed(1)} h` },
+    quotaPercentage() { return Math.min(100, Math.round((this.weekMinutes / (35 * 60)) * 100)) },
+    quotaColor() { return this.quotaPercentage < 50 ? 'danger' : this.quotaPercentage < 70 ? 'warning' : 'success' },
+    quotaMessage() { if (this.quotaPercentage >= 70) return 'Bravo, objectif atteint !'; const remaining = Math.max(0, Math.ceil((35 * 0.7 * 60 - this.weekMinutes) / 60)); return `Encore ${remaining} heure${remaining > 1 ? 's' : ''} pour atteindre l'objectif.` },
+    nightMinutes() { return this.weekSessions.reduce((total, session) => total + this.nightMinutesForSession(session), 0) },
+    nightHoursLabel() { return `${(this.nightMinutes / 60).toFixed(1)} h` },
+    overtimeMinutes() { return Math.max(0, this.weekMinutes - 35 * 60) },
+    balanceLabel() { const minutes = this.weekMinutes - 35 * 60; return `${minutes >= 0 ? '+' : '-'}${Math.floor(Math.abs(minutes) / 60)}h${Math.abs(minutes) % 60 ? ` ${Math.abs(minutes) % 60}m` : ''}` },
+    chartWorked() { return this.chartValues((session) => this.durationInMinutes(session) / 60) },
+    chartNight() { return this.chartValues((session) => this.nightMinutesForSession(session) / 60) },
+    chartDayLabels() { return ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'] },
+    recentSessions() { return this.workingTimes.slice(0, 10) }
+  },
+  mounted() { this.loadWorkingTimes(); this.timerId = window.setInterval(() => { this.now = new Date() }, 1000) },
+  beforeUnmount() { window.clearInterval(this.timerId) },
   methods: {
-    setStatus(message, kind = 'neutral') { this.statusMessage = message; this.statusKind = kind },
     async getUser() {
-      if (!this.userId) return this.setStatus('Indique un identifiant avant de charger un profil.', 'error')
-      this.isLoading = true
-      try { const response = await api.getUser(this.userId); this.user = response.data.data; this.username = this.user.username || ''; this.email = this.user.email || ''; this.setStatus('Profil chargé.', 'success') }
-      catch { this.setStatus('Impossible de charger ce profil.', 'error') } finally { this.isLoading = false }
+      const response = await api.getUser(this.userId)
+      this.user = response.data.data
+      return this.user
     },
-    async createUser() {
-      this.isLoading = true
-      try { const response = await api.createUser({ username: this.username, email: this.email }); this.user = response.data.data; this.userId = this.user.id; this.setStatus('Profil créé avec succès.', 'success') }
-      catch { this.setStatus('La création du profil a échoué.', 'error') } finally { this.isLoading = false }
+    async createUser(user) {
+      const response = await api.createUser(user)
+      return response.data.data
     },
-    async updateUser() {
-      this.isLoading = true
-      try { const response = await api.updateUser(this.userId, { username: this.username, email: this.email }); this.user = response.data.data; this.setStatus('Profil mis à jour.', 'success') }
-      catch { this.setStatus('La mise à jour du profil a échoué.', 'error') } finally { this.isLoading = false }
+    async updateUser(user) {
+      const response = await api.updateUser(this.userId, user)
+      this.user = response.data.data
+      return this.user
     },
     async deleteUser() {
-      this.isLoading = true
-      try { await api.deleteUser(this.userId); this.user = null; this.username = ''; this.email = ''; this.setStatus('Profil supprimé.', 'success') }
-      catch { this.setStatus('La suppression du profil a échoué.', 'error') } finally { this.isLoading = false }
-    }
+      await api.deleteUser(this.userId)
+      this.user = null
+    },
+    async loadWorkingTimes() {
+      this.isLoading = true; this.errorMessage = ''
+      try { const response = await api.getWorkingTimes(this.userId); this.workingTimes = (response.data.data || []).sort((a, b) => new Date(b.start) - new Date(a.start)) }
+      catch (error) { this.errorMessage = 'Impossible de charger les pointages. Vérifiez que l’API est démarrée.'; console.error(error) }
+      finally { this.isLoading = false }
+    },
+    async toggleClock() {
+      this.isClocking = true; this.errorMessage = ''
+      try { await api.clockInOut(this.userId); await this.loadWorkingTimes() }
+      catch (error) { this.errorMessage = error.response?.data?.error === 'already clocked in' ? 'Une session est déjà en cours.' : 'Le pointage n’a pas pu être enregistré.' }
+      finally { this.isClocking = false }
+    },
+    durationInMinutes(session) { return Math.max(0, Math.round((new Date(session.end || this.now) - new Date(session.start)) / 60000)) },
+    nightMinutesForSession(session) {
+      const start = new Date(session.start)
+      const end = new Date(session.end || this.now)
+      let cursor = start
+      let minutes = 0
+      while (cursor < end) {
+        const nextMinute = new Date(Math.min(cursor.getTime() + 60000, end.getTime()))
+        const hour = cursor.getHours()
+        if (hour >= 21 || hour < 6) minutes += (nextMinute - cursor) / 60000
+        cursor = nextMinute
+      }
+      return Math.round(minutes)
+    },
+    chartValues(valueFor) {
+      const values = Array(7).fill(0)
+      this.weekSessions.forEach((session) => {
+        const day = new Date(session.start).getDay() || 7
+        values[day - 1] += valueFor(session)
+      })
+      return values.map((value) => Math.round(value * 10) / 10)
+    },
+    chartLine(values) {
+      const max = 8
+      return values.map((value, index) => `${34 + index * 83},${142 - Math.min(value, max) / max * 112}`).join(' ')
+    },
+    isNightSession(session) { return this.nightMinutesForSession(session) > 0 },
+    formatSessionDate(value) { return new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(value)) },
+    formatSessionTime(value) { return new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }).format(new Date(value)) },
+    formatDuration(session) { const minutes = this.durationInMinutes(session); return minutes >= 60 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m` : `${minutes} min` }
   }
 }
 </script>
 
+<template>
+  <section class="dashboard-page">
+    <div class="welcome-row"><div><p class="dashboard-kicker">TABLEAU DE BORD</p><h1>Bonjour, Joseph</h1><p class="dashboard-date">{{ todayLabel }}</p></div></div>
+    <p v-if="errorMessage" class="api-error" role="alert" aria-live="assertive">{{ errorMessage }} <button type="button" @click="loadWorkingTimes">Réessayer</button></p>
+    <div class="dashboard-grid">
+      <article class="attendance-card" :class="{ active: isClockedIn }"><div class="card-heading"><div><p class="card-kicker">PRÉSENCE DU JOUR</p><h2>{{ isClockedIn ? 'Votre journée est en cours' : 'Prêt à commencer ?' }}</h2></div><span class="status-pill" :class="{ active: isClockedIn }"><i></i>{{ isClockedIn ? 'Actif' : 'Inactif' }}</span></div><div class="attendance-main"><div class="session-mark" :class="{ active: isClockedIn }"></div><div><strong class="attendance-state">{{ isClockedIn ? 'Clock In enregistré' : 'Aucune session active' }}</strong><p>{{ isClockedIn ? `Depuis ${formatSessionTime(activeSession.start)} · ${elapsedLabel}` : 'Enregistrez votre arrivée pour démarrer le chronomètre.' }}</p></div></div><div v-if="isClockedIn" class="session-timer"><span>Temps écoulé</span><strong>{{ elapsedLabel }}</strong></div><button class="clock-action" :class="{ 'clock-out': isClockedIn }" type="button" :disabled="isClocking || isLoading" @click="toggleClock"><span>{{ isClocking ? 'Enregistrement…' : isClockedIn ? 'Clock Out' : 'Clock In' }}</span><b>→</b></button></article>
+      <article class="live-time-card"><div class="card-heading"><div><p class="card-kicker">HEURE LOCALE</p><h2>Il est actuellement</h2></div><span class="live-dot"><i></i> Live</span></div><div class="flip-clock" aria-label="Heure actuelle"><template v-for="(part, partIndex) in timeParts" :key="partIndex"><div class="flip-group"><span v-for="(digit, digitIndex) in part.split('')" :key="`${partIndex}-${digitIndex}-${digit}`" class="flip-digit">{{ digit }}</span></div><span v-if="partIndex < 2" class="flip-separator">:</span></template></div><p class="clock-caption">Votre fuseau horaire local</p></article>
+    </div>
+    <section class="quota-section"><div class="section-title"><div><p class="card-kicker">OBJECTIF HEBDOMADAIRE</p><h2>Votre quota de la semaine</h2></div><strong class="quota-ratio">{{ quotaPercentage }}% <small>/ 70%</small></strong></div><div class="quota-content"><div class="quota-ring" :class="quotaColor" :style="{ '--progress': `${quotaPercentage}%` }"><span>{{ quotaPercentage }}<small>%</small></span></div><div class="quota-copy"><strong>{{ weekHoursLabel }} travaillées cette semaine</strong><p>{{ quotaMessage }}</p><div class="quota-bar"><span :style="{ width: `${quotaPercentage}%` }"></span><i></i></div><div class="quota-scale"><span>0 h</span><span>Objectif : 24,5 h</span><span>35 h</span></div></div></div></section>
+    <section class="activity-chart"><div class="chart-header"><div><p class="card-kicker">RYTHME DE LA SEMAINE</p><h2>Activité utilisateur</h2></div><span class="chart-menu" aria-hidden="true">···</span></div><div class="chart-canvas"><svg viewBox="0 0 620 180" role="img" aria-label="Activité de la semaine"><line v-for="line in [30, 86, 142]" :key="line" x1="34" :y1="line" x2="586" :y2="line" class="chart-grid-line" /><text v-for="(label, index) in ['0h', '4h', '8h']" :key="label" x="0" :y="146 - index * 56" class="chart-axis-label">{{ label }}</text><polyline :points="chartLine(chartWorked)" class="chart-line worked" /><polyline :points="chartLine(Array(7).fill(7))" class="chart-line target" /><polyline :points="chartLine(chartNight)" class="chart-line night" /><text v-for="(label, index) in ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']" :key="label" :x="27 + index * 83" y="169" class="chart-day-label">{{ label }}</text></svg></div><ul class="chart-data sr-only"><li v-for="(label, index) in chartDayLabels" :key="label">{{ label }} : {{ chartWorked[index] }} heure(s) travaillée(s), dont {{ chartNight[index] }} heure(s) de nuit.</li></ul><div class="chart-legend"><span><i class="worked" aria-hidden="true"></i>Heures travaillées</span><span><i class="target" aria-hidden="true"></i>Objectif journalier</span><span><i class="night" aria-hidden="true"></i>Heures de nuit</span></div></section>
+    <section class="weekly-section"><div class="section-title"><div><p class="card-kicker">STATISTIQUES DE LA SEMAINE</p><h2>Une vue claire de vos heures</h2></div></div><div class="weekly-grid"><article class="weekly-card"><div class="stat-accent blue"></div><span>Heures travaillées</span><strong>{{ weekHoursLabel }}</strong><small>Cette semaine</small></article><article class="weekly-card"><div class="stat-accent violet"></div><span>Heures de nuit</span><strong>{{ nightHoursLabel }}</strong><small>21h — 6h</small></article><article class="weekly-card"><div class="stat-accent amber"></div><span>Heures d'astreinte</span><strong>0.0 h</strong><small>Non applicable</small></article><article class="weekly-card"><div class="stat-accent" :class="overtimeMinutes ? 'green' : 'gray'"></div><span>Solde d'heures</span><strong>{{ balanceLabel }}</strong><small>{{ overtimeMinutes ? 'À payer' : 'À récupérer' }}</small></article></div></section>
+    <section class="history-section"><div class="section-title"><div><p class="card-kicker">ACTIVITÉ RÉCENTE</p><h2>Vos derniers pointages</h2></div><button class="refresh-link" type="button" :disabled="isLoading" @click="loadWorkingTimes">Actualiser <span>↻</span></button></div><div v-if="isLoading" class="history-placeholder">Chargement des pointages…</div><div v-else-if="recentSessions.length" class="table-wrap"><div class="session-table session-table-head"><span>Date</span><span>Début</span><span>Fin</span><span>Durée</span><span>Type</span><span>État</span></div><div v-for="session in recentSessions" :key="session.id" class="session-table"><span class="table-date">{{ formatSessionDate(session.start) }}</span><span>{{ formatSessionTime(session.start) }}</span><span>{{ session.end ? formatSessionTime(session.end) : '—' }}</span><span class="table-duration">{{ formatDuration(session) }}</span><span><b class="type-badge" :class="{ night: isNightSession(session) }"><i></i>{{ isNightSession(session) ? 'Nuit' : 'Jour' }}</b></span><span><b class="row-status" :class="{ ongoing: !session.end }">{{ session.end ? 'Terminé' : 'En cours' }}</b></span></div></div><div v-else class="empty-history"><span class="empty-mark"></span><div><strong>Aucun pointage récent</strong><p>Votre historique apparaîtra ici après votre première session.</p></div></div></section>
+  </section>
+</template>
+
 <style scoped>
-.user-page { --ink: #252522; --muted: #716b64; --paper: #fbf8f3; --line: rgba(37,33,27,.13); --copper: #a7673c; --blush: #ead8c6; padding-bottom: 3rem; }
-.user-console { width: min(100% - 2rem,980px); margin: 2rem auto 0; padding: 2rem; position: relative; z-index: 1; color: var(--ink); background: var(--paper); border: 1px solid rgba(37,33,27,.08); box-shadow: 0 24px 55px rgba(37,33,27,.14); }
-.section-heading { display:flex; justify-content:space-between; gap:2rem; padding-bottom:1.5rem; border-bottom:1px solid var(--line); }.eyebrow,.panel-kicker,.identity-stamp { margin:0 0 .55rem; color:var(--copper); font-size:.7rem; font-weight:800; letter-spacing:.16em; text-transform:uppercase; }.section-heading h2 { margin:0; font-size:clamp(1.8rem,4vw,3.1rem); letter-spacing:-.055em; }.section-intro { max-width:540px; margin:.7rem 0 0; color:var(--muted); line-height:1.6; }.record-mark { display:flex; align-items:center; gap:.65rem; align-self:start; color:var(--muted); font-size:.58rem; font-weight:800; letter-spacing:.1em; line-height:1.35; }.record-mark span { display:grid; width:44px; height:44px; place-items:center; color:var(--paper); background:var(--ink); border-radius:50%; }
-.console-grid { display:grid; grid-template-columns:1.45fr .75fr; gap:1rem; margin-top:1rem; }.profile-panel,.identity-panel { min-height:305px; padding:1.35rem; border:1px solid var(--line); }.profile-panel { background:#fff; }.identity-panel { position:relative; overflow:hidden; background:var(--blush); }.identity-panel::before { position:absolute; right:-35px; bottom:-55px; width:170px; height:170px; content:''; border:1px solid rgba(167,103,60,.35); border-radius:50%; box-shadow:0 0 0 18px rgba(167,103,60,.07),0 0 0 38px rgba(167,103,60,.05); }.panel-topline { display:flex; justify-content:space-between; margin-bottom:1.6rem; }.live-indicator { color:var(--muted); font-size:.72rem; font-weight:700; }.live-indicator i { display:inline-block; width:7px; height:7px; margin-right:.3rem; background:#638b63; border-radius:50%; }
-.form-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }label span { display:block; margin-bottom:.4rem; color:var(--muted); font-size:.76rem; font-weight:700; }input { width:100%; min-height:46px; padding:.7rem .8rem; color:var(--ink); background:var(--paper); border:1px solid var(--line); border-radius:0; outline:none; }input:focus { border-color:var(--copper); box-shadow:0 0 0 3px rgba(167,103,60,.13); }.wide-field { grid-column:1 / -1; }.action-row { display:flex; flex-wrap:wrap; gap:.55rem; margin-top:1.5rem; }.button { min-height:40px; padding:.65rem .85rem; border:1px solid transparent; border-radius:0; font-size:.75rem; font-weight:800; transition:transform .2s ease,background .2s ease; }.button:hover:not(:disabled) { transform:translateY(-2px); }.button:disabled { cursor:not-allowed; opacity:.45; }.button-dark { color:#fff; background:var(--ink); }.button-dark:hover:not(:disabled) { background:var(--copper); }.button-light { color:var(--ink); background:var(--blush); }.button-outline { color:var(--ink); background:transparent; border-color:var(--line); }.button-danger { color:#8a3e32; background:#f7e8e3; }
-.identity-stamp { color:var(--ink); opacity:.65; }.identity-content { position:relative; z-index:1; margin-top:2rem; }.avatar { display:grid; width:62px; height:62px; margin-bottom:1.2rem; place-items:center; color:var(--paper); font-size:1.1rem; font-weight:800; background:var(--ink); border-radius:50%; }.identity-label { margin:0 0 .35rem; color:var(--muted); font-size:.73rem; text-transform:uppercase; }.identity-content h3 { margin:0; font-size:1.65rem; letter-spacing:-.05em; }.identity-content > p:not(.identity-label) { margin:.35rem 0 1.4rem; color:var(--muted); overflow-wrap:anywhere; }.identity-meta { display:flex; justify-content:space-between; padding-top:.8rem; border-top:1px solid rgba(37,33,27,.16); color:var(--muted); font-size:.72rem; }.identity-meta strong { color:var(--ink); }.empty-identity { position:relative; z-index:1; margin-top:5rem; color:var(--muted); }.empty-line { display:block; width:44px; height:3px; margin-bottom:1rem; background:var(--copper); }.empty-identity p { margin:0 0 .35rem; color:var(--ink); font-weight:800; }.empty-identity small { line-height:1.5; }.status-message { margin:1rem 0 0; padding:.8rem 1rem; border-left:3px solid var(--ink); background:#fff; font-size:.85rem; }.status-message.is-success { border-color:#638b63; }.status-message.is-error { border-color:#a3483b; }
-@media (max-width:700px) { .user-console { width:min(100% - 1rem,980px); margin-top:1.25rem; padding:1.1rem; }.record-mark { display:none; }.console-grid { grid-template-columns:1fr; }.identity-panel { min-height:260px; }.form-grid { grid-template-columns:1fr; }.wide-field { grid-column:auto; } }
+.dashboard-page { max-width: 1120px; margin: 0 auto; color: #252b38; }
+.welcome-row, .card-heading, .section-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.welcome-row { align-items: flex-end; margin-bottom: 30px; }
+.dashboard-kicker, .card-kicker { margin: 0 0 8px; color: #8a7cf0; font-size: 10px; font-weight: 800; letter-spacing: .12em; }
+.welcome-row h1 { margin: 0; font: 800 clamp(25px, 4vw, 34px) 'Manrope', sans-serif; letter-spacing: -.055em; }.dashboard-date { margin: 8px 0 0; color: #8c96a5; font-size: 13px; text-transform: capitalize; }.role-switcher { display: flex; align-items: center; gap: 11px; color: #8c96a5; font-size: 11px; }.role-switcher select { padding: 9px 28px 9px 12px; color: #4c5666; background: #fff; border: 1px solid #e7eaf0; border-radius: 7px; outline: none; }.api-error { margin: -10px 0 20px; padding: 11px 14px; color: #b6444d; font-size: 12px; background: #fff0f1; border-left: 3px solid #e85d65; }.api-error button { margin-left: 8px; color: inherit; font-weight: 700; background: none; border: 0; cursor: pointer; text-decoration: underline; }
+.dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.28fr) minmax(330px, .72fr); gap: 18px; }.attendance-card, .live-time-card, .quota-section, .weekly-section, .history-section { background: #fff; border: 1px solid #eaedf2; border-radius: 12px; box-shadow: 0 8px 25px #29375608; }.attendance-card { padding: 24px; border-top: 3px solid #48ae79; }.attendance-card.active { border-top-color: #ee6268; }.live-time-card { padding: 24px; }.card-heading h2, .section-title h2 { margin: 0; color: #293140; font: 700 17px 'Manrope', sans-serif; letter-spacing: -.035em; }.status-pill, .live-dot { display: inline-flex; align-items: center; gap: 6px; color: #5f6979; font-size: 10px; font-weight: 700; }.status-pill i, .live-dot i { width: 7px; height: 7px; background: #aeb7c4; border-radius: 50%; }.status-pill.active { color: #d84d5c; }.status-pill.active i { background: #ee6268; }.live-dot { color: #41a66e; }.live-dot i { background: #41b977; }
+.attendance-main { display: flex; align-items: center; gap: 14px; margin: 27px 0 23px; }.session-mark { display: grid; width: 48px; height: 48px; place-items: center; background: #f0efff; border-radius: 11px; }.session-mark::before { width: 19px; height: 19px; content: ''; border: 2px solid #7c70e7; border-radius: 50%; }.session-mark::after { width: 7px; height: 7px; content: ''; background: #7c70e7; border-radius: 50%; }.session-mark.active { background: #fff0f0; }.session-mark.active::before { border-color: #df5962; }.session-mark.active::after { background: #df5962; }.attendance-state { color: #303847; font-size: 14px; }.attendance-main p { margin: 5px 0 0; color: #8b95a4; font-size: 11px; }.session-timer { display: flex; align-items: baseline; justify-content: space-between; margin: -5px 0 18px; padding: 10px 12px; color: #d84d5c; background: #fff5f5; border-radius: 7px; }.session-timer span { font-size: 10px; font-weight: 700; text-transform: uppercase; }.session-timer strong { font: 700 18px 'Manrope', sans-serif; }.clock-action { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 48px; padding: 0 17px; color: #fff; font-size: 13px; font-weight: 700; background: #47ad79; border: 0; border-radius: 7px; cursor: pointer; }.clock-action.clock-out { background: #e85d65; }.clock-action:disabled { cursor: wait; opacity: .65; }.clock-action b { font-size: 20px; font-weight: 400; }
+.flip-clock { display: flex; align-items: center; justify-content: center; gap: 7px; margin: 27px 0 11px; }.flip-group { display: flex; gap: 4px; }.flip-digit { display: grid; width: 34px; height: 44px; place-items: center; color: #fff; font: 800 24px 'Manrope', sans-serif; background: #1e2530; border-radius: 6px; }.flip-separator { color: #8f98a6; font-size: 24px; font-weight: 700; }.clock-caption { margin: 0; color: #a0a8b4; font-size: 10px; text-align: center; }
+.quota-section, .weekly-section { margin-top: 18px; padding: 24px; }.quota-ratio { color: #303847; font: 700 20px 'Manrope', sans-serif; }.quota-ratio small { color: #9aa3af; font-size: 12px; font-weight: 500; }.quota-content { display: flex; align-items: center; gap: 28px; }.quota-ring { position: relative; display: grid; width: 124px; height: 124px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: conic-gradient(var(--ring-color) var(--progress), #edf0f4 0); }.quota-ring::before { width: 96px; height: 96px; content: ''; background: #fff; border-radius: 50%; }.quota-ring span { position: absolute; font: 800 27px 'Manrope', sans-serif; }.quota-ring span small { font-size: 13px; }.quota-ring.danger { --ring-color: #e85d65; }.quota-ring.warning { --ring-color: #f0ad32; }.quota-ring.success { --ring-color: #42ad76; }.quota-copy { flex: 1; }.quota-copy > strong { color: #3b4554; font-size: 14px; }.quota-copy p { margin: 7px 0 18px; color: #8c96a5; font-size: 12px; }.quota-bar { position: relative; height: 9px; background: #edf0f4; border-radius: 99px; }.quota-bar span { display: block; height: 100%; background: var(--ring-color); border-radius: inherit; }.quota-bar i { position: absolute; top: -3px; left: 70%; width: 2px; height: 15px; background: #535d6c; }.quota-scale { display: flex; justify-content: space-between; margin-top: 8px; color: #a0a8b4; font-size: 10px; }
+.activity-chart { margin-top: 18px; padding: 24px; color: #f7f7f7; background: #171717; border: 1px solid #303030; border-radius: 12px; }.chart-header { display: flex; justify-content: space-between; align-items: flex-start; }.activity-chart .card-kicker { color: #d2a33f; }.activity-chart h2 { margin: 0; font: 700 17px 'Manrope', sans-serif; }.chart-menu { color: #a1a1a1; letter-spacing: 3px; }.chart-canvas { margin-top: 18px; }.chart-canvas svg { display: block; width: 100%; height: auto; overflow: visible; }.chart-grid-line { stroke: #303030; stroke-dasharray: 4 7; }.chart-axis-label, .chart-day-label { fill: #8d8d8d; font: 10px 'DM Sans', sans-serif; }.chart-line { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2.5; }.chart-line.worked { stroke: #2d73ee; }.chart-line.target { stroke: #ff7d0a; }.chart-line.night { stroke: #667a9a; }.chart-legend { display: flex; justify-content: center; flex-wrap: wrap; gap: 22px; margin-top: 8px; color: #aaa; font-size: 11px; }.chart-legend span { display: inline-flex; align-items: center; gap: 7px; }.chart-legend i { width: 9px; height: 9px; display: inline-block; border-radius: 50%; }.chart-legend i.worked { background: #2d73ee; }.chart-legend i.target { background: #ff7d0a; }.chart-legend i.night { background: #667a9a; }
+.weekly-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }.weekly-card { position: relative; min-height: 126px; padding: 18px; overflow: hidden; background: #252525; border-radius: 9px; }.weekly-card span, .weekly-card small { display: block; color: #9fa3aa; font-size: 11px; }.weekly-card strong { display: block; margin: 24px 0 2px; color: #f4f4f4; font: 700 26px 'Manrope', sans-serif; }.weekly-card small { color: #c3c5c9; }.stat-accent { position: absolute; inset: 0 0 auto; height: 3px; background: #5796e7; }.stat-accent.violet { background: #8b7ded; }.stat-accent.amber { background: #efad32; }.stat-accent.green { background: #43ae76; }.stat-accent.gray { background: #9299a4; }
+.history-section { margin-top: 18px; padding: 23px; }.refresh-link { color: #786be7; font-size: 11px; font-weight: 700; background: transparent; border: 0; cursor: pointer; }.refresh-link span { margin-left: 5px; font-size: 16px; }.table-wrap { overflow-x: auto; }.session-table { display: grid; grid-template-columns: 1.35fr .75fr .75fr .75fr .8fr .75fr; align-items: center; gap: 12px; min-width: 660px; min-height: 58px; color: #5d6675; font-size: 11px; border-bottom: 1px solid #edf0f4; }.session-table-head { min-height: 34px; color: #9aa3af; font-size: 10px; font-weight: 700; text-transform: uppercase; }.table-date, .table-duration { color: #404959; font-weight: 700; }.type-badge { display: inline-flex; align-items: center; gap: 5px; color: #4b9e71; font-size: 10px; }.type-badge.night { color: #776bdd; }.type-badge i { width: 7px; height: 7px; background: currentColor; border-radius: 50%; }.row-status { color: #53a875; font-size: 10px; }.row-status.ongoing { color: #e45b65; }.history-placeholder { padding: 30px 0; color: #9aa3af; font-size: 12px; }.empty-history { display: flex; align-items: center; gap: 13px; padding: 20px 0 6px; color: #8c96a5; }.empty-mark { width: 28px; height: 28px; border: 2px solid #aeb7c4; border-radius: 50%; }
+@media (max-width: 850px) { .weekly-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 760px) { .welcome-row { display: block; }.role-switcher { margin-top: 18px; justify-content: space-between; }.dashboard-grid { grid-template-columns: 1fr; }.quota-content { align-items: flex-start; flex-direction: column; }.quota-ring { align-self: center; } }
+@media (max-width: 450px) { .attendance-card, .live-time-card, .quota-section, .weekly-section, .history-section { padding: 17px; }.flip-clock { gap: 4px; }.flip-digit { width: 28px; height: 39px; font-size: 20px; }.flip-separator { font-size: 19px; }.weekly-grid { grid-template-columns: 1fr; }.quota-scale { font-size: 9px; } }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 </style>

@@ -1,11 +1,37 @@
 import axios from 'axios'
+import { clearAuthUser, getCsrfToken } from '../utils/auth'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json'
   }
 })
+
+api.interceptors.request.use((config) => {
+  const csrfToken = getCsrfToken()
+
+  if (csrfToken && config.headers) {
+    config.headers['x-xsrf-token'] = csrfToken
+  }
+
+  return config
+})
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error?.response?.status === 401) {
+      clearAuthUser()
+      if (window.location.pathname !== '/sign_in') {
+        window.location.href = '/sign_in'
+      }
+    }
+
+    return Promise.reject(error)
+  }
+)
 
 api.getUser = (userID) => api.get(`/users/${userID}`)
 api.createUser = (user) => api.post('/users', { user })

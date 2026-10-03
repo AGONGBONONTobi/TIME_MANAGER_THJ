@@ -1,12 +1,15 @@
 <script>
 import api from '../services/api'
+import { readAuthUser } from '../utils/auth'
 
 export default {
   name: 'UserPage',
   data() {
-    return { userId: 1, user: null, now: new Date(), workingTimes: [], isLoading: true, isClocking: false, errorMessage: '', timerId: null }
+    return { userId: null, user: null, now: new Date(), workingTimes: [], isLoading: true, isClocking: false, errorMessage: '', timerId: null }
   },
   computed: {
+    currentUser() { return readAuthUser() },
+    displayName() { return this.user?.username || this.currentUser?.username || 'Utilisateur' },
     todayLabel() { return new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }).format(this.now) },
     currentTime() { return new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(this.now) },
     timeParts() { return this.currentTime.split(':') },
@@ -30,12 +33,25 @@ export default {
     chartDayLabels() { return ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'] },
     recentSessions() { return this.workingTimes.slice(0, 10) }
   },
-  mounted() { this.loadWorkingTimes(); this.timerId = window.setInterval(() => { this.now = new Date() }, 1000) },
+  mounted() {
+    const authUser = readAuthUser()
+    this.userId = authUser?.id ?? null
+    if (this.userId) {
+      this.getUser().catch(() => {})
+    }
+    this.loadWorkingTimes()
+    this.timerId = window.setInterval(() => { this.now = new Date() }, 1000)
+  },
   beforeUnmount() { window.clearInterval(this.timerId) },
   methods: {
     async getUser() {
+      if (!this.userId) {
+        this.user = this.currentUser
+        return this.user
+      }
+
       const response = await api.getUser(this.userId)
-      this.user = response.data.data
+      this.user = response.data.data || this.currentUser
       return this.user
     },
     async createUser(user) {
@@ -52,6 +68,12 @@ export default {
       this.user = null
     },
     async loadWorkingTimes() {
+      if (!this.userId) {
+        this.workingTimes = []
+        this.isLoading = false
+        return
+      }
+
       this.isLoading = true; this.errorMessage = ''
       try { const response = await api.getWorkingTimes(this.userId); this.workingTimes = (response.data.data || []).sort((a, b) => new Date(b.start) - new Date(a.start)) }
       catch (error) { this.errorMessage = 'Impossible de charger les pointages. Vérifiez que l’API est démarrée.'; console.error(error) }
@@ -99,7 +121,7 @@ export default {
 
 <template>
   <section class="dashboard-page">
-    <div class="welcome-row"><div><p class="dashboard-kicker">TABLEAU DE BORD</p><h1>Bonjour, Joseph</h1><p class="dashboard-date">{{ todayLabel }}</p></div></div>
+    <div class="welcome-row"><div><p class="dashboard-kicker">TABLEAU DE BORD</p><h1>Bonjour, {{ displayName }}</h1><p class="dashboard-date">{{ todayLabel }}</p></div></div>
     <p v-if="errorMessage" class="api-error" role="alert" aria-live="assertive">{{ errorMessage }} <button type="button" @click="loadWorkingTimes">Réessayer</button></p>
     <div class="dashboard-grid">
       <article class="attendance-card" :class="{ active: isClockedIn }"><div class="card-heading"><div><p class="card-kicker">PRÉSENCE DU JOUR</p><h2>{{ isClockedIn ? 'Votre journée est en cours' : 'Prêt à commencer ?' }}</h2></div><span class="status-pill" :class="{ active: isClockedIn }"><i></i>{{ isClockedIn ? 'Actif' : 'Inactif' }}</span></div><div class="attendance-main"><div class="session-mark" :class="{ active: isClockedIn }"></div><div><strong class="attendance-state">{{ isClockedIn ? 'Clock In enregistré' : 'Aucune session active' }}</strong><p>{{ isClockedIn ? `Depuis ${formatSessionTime(activeSession.start)} · ${elapsedLabel}` : 'Enregistrez votre arrivée pour démarrer le chronomètre.' }}</p></div></div><div v-if="isClockedIn" class="session-timer"><span>Temps écoulé</span><strong>{{ elapsedLabel }}</strong></div><button class="clock-action" :class="{ 'clock-out': isClockedIn }" type="button" :disabled="isClocking || isLoading" @click="toggleClock"><span>{{ isClocking ? 'Enregistrement…' : isClockedIn ? 'Clock Out' : 'Clock In' }}</span><b>→</b></button></article>

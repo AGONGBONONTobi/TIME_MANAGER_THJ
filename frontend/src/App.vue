@@ -1,67 +1,124 @@
 <script>
+import api from './services/api'
+import { clearAuthUser, readAuthUser } from './utils/auth'
+
 export default {
   name: 'App',
   data() {
     return {
-      currentUserId: 1,
       isNavOpen: false,
       isProfileOpen: false,
       isHelpOpen: false,
-      lastDashboard: 'user'
+      currentUser: readAuthUser(),
+      lastDashboard: 'dashboard'
     }
   },
   computed: {
+    currentUserId() {
+      return this.currentUser ? Number(this.currentUser.id) : null
+    },
+    isAuthenticated() {
+      return Boolean(this.currentUser && this.currentUser.id && this.currentUser.role)
+    },
+    userInitials() {
+      const username = this.currentUser?.username || 'U'
+      const names = username.trim().split(/\s+/).filter(Boolean)
+      if (!names.length) return 'U'
+      return names.slice(0, 2).map((name) => name[0].toUpperCase()).join('')
+    },
+    userRoleLabel() {
+      if (!this.currentUser?.role) return 'Utilisateur'
+      return String(this.currentUser.role).charAt(0).toUpperCase() + String(this.currentUser.role).slice(1)
+    },
     dashboardTarget() {
-      return this.lastDashboard === 'manager-dashboard'
-        ? { path: '/manager-dashboard' }
-        : { name: 'user' }
+      if (!this.isAuthenticated) return { path: '/sign_in' }
+      if (this.currentUser.role === 'admin') return { path: '/admin' }
+      if (this.currentUser.role === 'manager') return { path: '/manager' }
+      return { path: '/employee' }
+    },
+    canViewManager() {
+      return ['manager', 'admin'].includes(String(this.currentUser?.role || '').toLowerCase())
+    },
+    canViewAdmin() {
+      return String(this.currentUser?.role || '').toLowerCase() === 'admin'
+    },
+    isAuthLayout() {
+      return this.$route.meta?.guestOnly === true
     }
   },
   watch: {
     '$route'(route) {
-      if (route.path === '/manager-dashboard') this.lastDashboard = 'manager-dashboard'
-      else if (route.name === 'user') this.lastDashboard = 'user'
+      this.currentUser = readAuthUser()
+      if (route.path === '/manager') this.lastDashboard = 'manager'
+      else if (route.path === '/admin') this.lastDashboard = 'admin'
+      else if (route.path === '/employee') this.lastDashboard = 'employee'
+      else if (route.path === '/dashboard') this.lastDashboard = 'dashboard'
     }
   },
   methods: {
     closeNav() { this.isNavOpen = false },
     toggleNav() { this.isNavOpen = !this.isNavOpen },
     toggleHelp() { this.isHelpOpen = !this.isHelpOpen },
+    async signOut() {
+      try {
+        await api.post('/auth/sign_out')
+      } catch (error) {
+        console.warn('Déconnexion backend impossible, nettoyage local effectué.', error)
+      } finally {
+        clearAuthUser()
+        this.currentUser = null
+        this.isProfileOpen = false
+        this.$router.push('/sign_in')
+      }
+    },
     handleEscape(event) {
-      if (event.key === 'Escape') { this.isNavOpen = false; this.isProfileOpen = false; this.isHelpOpen = false }
+      if (event.key === 'Escape') {
+        this.isNavOpen = false
+        this.isProfileOpen = false
+        this.isHelpOpen = false
+      }
     }
   },
   mounted() {
     window.addEventListener('keydown', this.handleEscape)
-    if (this.$route.path === '/manager-dashboard') this.lastDashboard = 'manager-dashboard'
+    if (this.$route.path === '/manager') this.lastDashboard = 'manager'
+    else if (this.$route.path === '/admin') this.lastDashboard = 'admin'
+    else if (this.$route.path === '/employee') this.lastDashboard = 'employee'
   },
   beforeUnmount() { window.removeEventListener('keydown', this.handleEscape) }
 }
 </script>
 
 <template>
-  <a class="skip-link" href="#main-content">Aller au contenu principal</a>
-  <div class="app-shell">
+  <div v-if="isAuthLayout" class="auth-shell">
+    <router-view />
+  </div>
+
+  <div v-else class="app-shell">
+    <a class="skip-link" href="#main-content">Aller au contenu principal</a>
     <div v-if="isNavOpen" class="mobile-scrim" aria-hidden="true" @click="closeNav"></div>
     <aside class="sidebar" :class="{ 'is-open': isNavOpen }">
       <div class="brand"><span class="brand-symbol" aria-hidden="true"><i></i></span><span>Time Manager</span></div>
       <nav class="sidebar-nav" aria-label="Navigation principale">
         <p class="nav-section-title">Navigation</p>
-        <router-link class="sidebar-link" :class="{ 'is-selected': $route.path === '/manager-dashboard' || $route.name === 'user' }" :to="dashboardTarget" @click="closeNav"><span class="nav-icon" aria-hidden="true">⌂</span><span>Tableau de bord</span><span class="nav-arrow" aria-hidden="true">›</span></router-link>
-        <p class="nav-section-title nav-section-spaced">Mon espace</p>
-        <router-link class="sidebar-link" :to="{ name: 'workingTimes', params: { userID: currentUserId } }" @click="closeNav"><span class="nav-icon" aria-hidden="true">◷</span><span>Historique</span><span class="nav-arrow" aria-hidden="true">›</span></router-link>
-        <router-link class="sidebar-link" :to="{ name: 'clock', params: { userID: currentUserId } }" @click="closeNav"><span class="nav-icon" aria-hidden="true">◉</span><span>Pointage</span><span class="nav-arrow" aria-hidden="true">›</span></router-link>
-        <router-link class="sidebar-link" :to="{ name: 'chartManager', params: { userID: currentUserId } }" @click="closeNav"><span class="nav-icon" aria-hidden="true">▥</span><span>Graphiques</span><span class="nav-arrow" aria-hidden="true">›</span></router-link>
+        <router-link v-if="isAuthenticated" class="sidebar-link" :class="{ 'is-selected': $route.path.startsWith('/dashboard') || $route.path === '/employee' || $route.path === '/manager' || $route.path === '/admin' }" :to="dashboardTarget" @click="closeNav"><span class="nav-icon" aria-hidden="true">⌂</span><span>Tableau de bord</span><span class="nav-arrow" aria-hidden="true">›</span></router-link>
+        <p v-if="isAuthenticated" class="nav-section-title nav-section-spaced">Mon espace</p>
+        <router-link v-if="isAuthenticated" class="sidebar-link" :to="{ name: 'workingTimes', params: { userID: currentUserId } }" @click="closeNav"><span class="nav-icon" aria-hidden="true">◷</span><span>Historique</span><span class="nav-arrow" aria-hidden="true">›</span></router-link>
+        <router-link v-if="isAuthenticated" class="sidebar-link" :to="{ name: 'clock', params: { userID: currentUserId } }" @click="closeNav"><span class="nav-icon" aria-hidden="true">◉</span><span>Pointage</span><span class="nav-arrow" aria-hidden="true">›</span></router-link>
+        <router-link v-if="isAuthenticated" class="sidebar-link" :to="{ name: 'chartManager', params: { userID: currentUserId } }" @click="closeNav"><span class="nav-icon" aria-hidden="true">▥</span><span>Graphiques</span><span class="nav-arrow" aria-hidden="true">›</span></router-link>
+        <router-link v-if="canViewManager" class="sidebar-link" to="/manager" @click="closeNav"><span class="nav-icon" aria-hidden="true">◫</span><span>Espace manager</span><span class="nav-arrow" aria-hidden="true">›</span></router-link>
+        <router-link v-if="canViewAdmin" class="sidebar-link" to="/admin" @click="closeNav"><span class="nav-icon" aria-hidden="true">⚑</span><span>Espace admin</span><span class="nav-arrow" aria-hidden="true">›</span></router-link>
       </nav>
       <div class="sidebar-footer"><button class="sidebar-help" type="button" @click="toggleHelp"><span class="help-orb" aria-hidden="true">?</span><span><strong>Besoin d'aide ?</strong><small>Ouvrir le centre d'aide</small></span></button><div class="sidebar-version">TIME MANAGER <span>v1.0</span></div></div>
     </aside>
     <div class="main-shell">
       <header class="topbar">
         <button class="menu-toggle" type="button" aria-label="Ouvrir la navigation" :aria-expanded="isNavOpen" @click="toggleNav"><span></span><span></span><span></span></button>
-        <div class="page-heading"><span class="page-heading-dot"></span><span>Mon espace</span></div>
+        <div class="page-heading"><span class="page-heading-dot"></span><span>{{ isAuthenticated ? 'Mon espace' : 'Connexion' }}</span></div>
         <div class="topbar-actions">
-          <button class="profile-button" type="button" :aria-expanded="isProfileOpen" aria-controls="profile-menu" @click="isProfileOpen = !isProfileOpen"><span class="avatar avatar-small" aria-hidden="true">JW</span><span class="profile-copy"><strong>Joseph William</strong><small>Utilisateur</small></span><span class="profile-chevron" aria-hidden="true">⌄</span></button>
-            <div v-if="isProfileOpen" id="profile-menu" class="profile-menu"><strong>Joseph William</strong><span>Espace utilisateur</span><button type="button" @click="isProfileOpen = false">Fermer</button></div>
+          <button v-if="isAuthenticated" class="profile-button" type="button" :aria-expanded="isProfileOpen" aria-controls="profile-menu" @click="isProfileOpen = !isProfileOpen"><span class="avatar avatar-small" aria-hidden="true">{{ userInitials }}</span><span class="profile-copy"><strong>{{ currentUser.username || 'Utilisateur' }}</strong><small>{{ userRoleLabel }}</small></span><span class="profile-chevron" aria-hidden="true">⌄</span></button>
+          <router-link v-else class="signin-link" to="/sign_in">Connexion</router-link>
+          <div v-if="isProfileOpen" id="profile-menu" class="profile-menu"><strong>{{ currentUser.username || 'Utilisateur' }}</strong><span>{{ userRoleLabel }}</span><button type="button" @click="signOut">Déconnexion</button></div>
         </div>
       </header>
       <main id="main-content" class="app-content" tabindex="-1"><router-view /></main>
@@ -83,6 +140,7 @@ export default {
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap');
 :root { font-family: 'DM Sans', sans-serif; color: #20242e; background: #f7f8fb; font-synthesis: none; }
 * { box-sizing: border-box; } body { min-width: 320px; margin: 0; } button, input { font: inherit; }
+.auth-shell { min-height: 100vh; }
 .app-shell { min-height: 100vh; background: #f7f8fb; }.sidebar { position: fixed; z-index: 20; inset: 0 auto 0 0; display: flex; width: 276px; flex-direction: column; padding: 23px 14px 18px; color: #bec5d1; background: #1d2430; }.brand { display: flex; align-items: center; gap: 11px; padding: 0 8px 35px; color: #fff; font: 800 20px 'Manrope', sans-serif; letter-spacing: -.04em; }.brand-symbol { position: relative; display: grid; width: 30px; height: 30px; place-items: center; border: 1.5px solid #e9edf5; border-radius: 50%; }.brand-symbol::before { width: 10px; height: 10px; content: ''; border: 2px solid #a49aff; border-radius: 50%; }.brand-symbol i { position: absolute; top: -2px; right: -2px; width: 9px; height: 15px; background: #1d2430; border-bottom: 2px solid #e9edf5; transform: rotate(28deg); }
 .nav-section-title { margin: 0 0 13px; color: #978bf7; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }.nav-section-spaced { margin-top: 29px; }.sidebar-nav { flex: 1; overflow-y: auto; }.sidebar-link { display: flex; align-items: center; gap: 13px; min-height: 44px; margin: 3px 0; padding: 0 12px; color: #bec5d1; font-size: 13px; text-decoration: none; border-radius: 9px; transition: background .2s ease, color .2s ease; }.sidebar-link:hover, .sidebar-link.is-selected { color: #fff; background: #2b3443; }.sidebar-link.is-selected { box-shadow: inset 3px 0 #9a8cff; }.nav-icon { display: inline-grid; width: 18px; place-items: center; color: #8793a5; font-size: 19px; line-height: 1; }.sidebar-link:hover .nav-icon, .sidebar-link.is-selected .nav-icon { color: #c1baff; }.nav-arrow { margin-left: auto; font-size: 21px; line-height: 1; }.sidebar-footer { padding-top: 18px; }.sidebar-help { display: flex; align-items: center; gap: 10px; padding: 13px 10px; border-top: 1px solid #303947; border-bottom: 1px solid #303947; }.help-orb { display: grid; width: 30px; height: 30px; place-items: center; color: #a79cff; border: 1px solid #5d6680; border-radius: 50%; }.sidebar-help strong, .sidebar-help small { display: block; }.sidebar-help strong { color: #eef0f5; font-size: 11px; }.sidebar-help small { margin-top: 3px; color: #8993a4; font-size: 10px; }.sidebar-version { margin-top: 17px; color: #687386; font-size: 9px; letter-spacing: .08em; text-align: center; }.sidebar-version span { color: #9a8cff; }
 .main-shell { min-height: 100vh; margin-left: 276px; }.topbar { position: relative; z-index: 10; display: flex; align-items: center; justify-content: space-between; height: 72px; padding: 0 38px; background: #fff; border-bottom: 1px solid #edf0f4; }.page-heading { display: flex; align-items: center; gap: 10px; color: #303744; font: 700 16px 'Manrope', sans-serif; }.page-heading-dot { width: 8px; height: 8px; background: #9a8cff; border-radius: 50%; }.topbar-actions { position: relative; display: flex; align-items: center; gap: 22px; }.notification-button { position: relative; width: 28px; height: 30px; color: #445064; background: transparent; border: 0; cursor: pointer; }.bell { display: inline-block; font-size: 25px; transform: rotate(180deg); }.notification-button b { position: absolute; top: -4px; right: -1px; display: grid; width: 17px; height: 17px; place-items: center; color: #fff; font-size: 10px; background: #ed575f; border: 2px solid #fff; border-radius: 50%; }.profile-button { display: flex; align-items: center; gap: 10px; padding: 0; color: #4a5363; text-align: left; background: transparent; border: 0; cursor: pointer; }.avatar { display: grid; place-items: center; color: #6e4c31; font-weight: 700; background: #f2c696; border-radius: 50%; }.avatar-small { width: 38px; height: 38px; font-size: 11px; border: 3px solid #e7f3ff; }.profile-copy strong, .profile-copy small { display: block; }.profile-copy strong { font-size: 13px; }.profile-copy small { margin-top: 3px; color: #89919f; font-size: 11px; }.profile-chevron { color: #8d96a3; font-size: 16px; }.profile-menu { position: absolute; top: 49px; right: 0; display: grid; min-width: 190px; gap: 5px; padding: 15px; color: #3b4350; background: #fff; border: 1px solid #e8ebf0; border-radius: 10px; box-shadow: 0 12px 25px #24304718; }.profile-menu span { color: #89919f; font-size: 11px; }.profile-menu button { margin-top: 7px; padding: 6px 0; color: #7366dc; text-align: left; background: none; border: 0; cursor: pointer; }.menu-toggle { display: none; width: 34px; height: 34px; padding: 7px 5px; background: #fff; border: 1px solid #e4e8ef; border-radius: 7px; }.menu-toggle span { display: block; height: 2px; margin: 4px 2px; background: #566173; }.app-content { min-height: calc(100vh - 72px); padding: 32px 38px 48px; }.mobile-scrim { display: none; }

@@ -3,13 +3,34 @@ defmodule TimeManagerWeb.Router do
 
   pipeline :api do
     plug(:accepts, ["json"])
+    plug(:fetch_session)
     plug OpenApiSpex.Plug.PutApiSpec, module: TimeManagerWeb.ApiSpec
+  end
+
+  pipeline :require_auth do
+    plug TimeManagerWeb.Plugs.RequireAuth
+  end
+
+  pipeline :require_csrf do
+    plug TimeManagerWeb.Plugs.ValidateCsrf
   end
 
   scope "/api", TimeManagerWeb do
     pipe_through(:api)
 
+    scope "/auth" do
+      post "/sign_up", AuthController, :sign_up
+      post "/sign_in", AuthController, :sign_in
+    end
+
+    scope "/auth" do
+      pipe_through [:require_auth, :require_csrf]
+      post "/sign_out", AuthController, :sign_out
+    end
+
     scope "/users" do
+      pipe_through [:require_auth]
+
       get("/", UserController, :index)
       post("/", UserController, :create)
       get("/:userID", UserController, :show)
@@ -18,6 +39,8 @@ defmodule TimeManagerWeb.Router do
     end
 
     scope "/workingtime" do
+      pipe_through [:require_auth]
+
       get("/:userID", WorkingTimeController, :index)
       get("/:userID/:id", WorkingTimeController, :show)
       post("/:userID", WorkingTimeController, :create)
@@ -25,13 +48,12 @@ defmodule TimeManagerWeb.Router do
       delete("/:id", WorkingTimeController, :delete)
     end
 
-
-    # resources("/clocks", ClockController, except: [:new, :edit])
     scope "/clocks" do
+      pipe_through [:require_auth]
+
       get("/:userID", ClockController, :index)
       post("/:userID", ClockController, :create)
     end
-
   end
 
   scope "/" do

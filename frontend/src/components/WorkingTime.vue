@@ -43,8 +43,11 @@ export default {
         this.isLoading = false
       }
     },
+    // ✅ after
     payload() {
-      return { start: this.toApiDateTime(this.form.start), ...(this.form.end ? { end: this.toApiDateTime(this.form.end) } : {}) }
+      return {
+        start_at: this.toApiDateTime(this.form.start), ...(this.form.end ? { end_at: this.toApiDateTime(this.form.end) } : {})
+      }
     },
     async createWorkingTime() {
       this.isSaving = true

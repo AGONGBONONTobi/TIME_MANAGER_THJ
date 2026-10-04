@@ -7,7 +7,16 @@ defmodule TimeManagerWeb.Plugs.ValidateCsrf do
 
   def call(%Plug.Conn{method: method} = conn, _opts) do
     if method in ["POST", "PUT", "PATCH", "DELETE"] do
-      expected = get_session(conn, :csrf_token)
+      conn = fetch_cookies(conn)
+
+      expected = 
+        with token when not is_nil(token) <- conn.cookies["auth_token"],
+             {:ok, claims} <- TimeManager.Token.verify_and_validate(token) do
+          claims["csrf_token"]
+        else
+          _ -> nil
+        end
+
       received = get_req_header(conn, "x-xsrf-token") |> List.first()
 
       case {expected, received} do

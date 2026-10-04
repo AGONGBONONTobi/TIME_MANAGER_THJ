@@ -11,6 +11,18 @@ defmodule TimeManagerWeb.Router do
     plug TimeManagerWeb.Plugs.RequireAuth
   end
 
+  pipeline :require_user_access do
+    plug TimeManagerWeb.Plugs.RequireUserAccess
+  end
+
+  pipeline :require_manager do
+    plug TimeManagerWeb.Plugs.RequireRole, roles: ["manager", "admin"]
+  end
+
+  pipeline :require_admin do
+    plug TimeManagerWeb.Plugs.RequireRole, roles: ["admin"]
+  end
+
   pipeline :require_csrf do
     plug TimeManagerWeb.Plugs.ValidateCsrf
   end
@@ -28,6 +40,11 @@ defmodule TimeManagerWeb.Router do
       post "/sign_out", AuthController, :sign_out
     end
 
+    scope "/auth" do
+      pipe_through [:require_auth]
+      get "/me", AuthController, :me
+    end
+
     scope "/users" do
       pipe_through [:require_auth]
 
@@ -36,6 +53,72 @@ defmodule TimeManagerWeb.Router do
       get("/:userID", UserController, :show)
       put("/:userID", UserController, :update)
       delete("/:userID", UserController, :delete)
+    end
+
+    scope "/manager" do
+      pipe_through [:require_auth, :require_manager]
+
+      get("/team", ManagerController, :team)
+      post("/users/:userID/reminders", ManagerController, :remind)
+    end
+
+    scope "/notifications" do
+      pipe_through [:require_auth]
+
+      get "/", NotificationController, :index
+      patch "/:id/read", NotificationController, :read
+    end
+
+    scope "/teams" do
+      pipe_through [:require_auth, :require_manager]
+
+      get "/", TeamController, :index
+      get "/:id", TeamController, :show
+      get "/:team_id/tasks", TeamTaskController, :index
+      post "/:team_id/tasks", TeamTaskController, :create
+      patch "/:team_id/tasks/:id/status", TeamTaskController, :update_status
+      post "/:id/members/:user_id", TeamController, :add_member
+      delete "/:id/members/:user_id", TeamController, :remove_member
+    end
+
+    scope "/teams" do
+      pipe_through [:require_auth, :require_admin]
+
+      post "/", TeamController, :create
+      put "/:id", TeamController, :update
+      delete "/:id", TeamController, :delete
+    end
+
+    scope "/leave-requests" do
+      pipe_through [:require_auth]
+
+      get "/", LeaveRequestController, :index
+      post "/", LeaveRequestController, :create
+    end
+
+    scope "/leave-requests" do
+      pipe_through [:require_auth, :require_manager]
+
+      post "/:id/approve", LeaveRequestController, :approve
+      post "/:id/reject", LeaveRequestController, :reject
+    end
+
+    scope "/payroll-rules" do
+      pipe_through [:require_auth, :require_admin]
+
+      get "/", PayrollRuleController, :index
+      post "/", PayrollRuleController, :create
+      put "/:id", PayrollRuleController, :update
+      delete "/:id", PayrollRuleController, :delete
+    end
+
+    scope "/work-policies" do
+      pipe_through [:require_auth, :require_admin]
+
+      get "/", WorkPolicyController, :index
+      post "/", WorkPolicyController, :create
+      put "/:id", WorkPolicyController, :update
+      post "/assignments", WorkPolicyController, :assign
     end
 
     scope "/workingtime" do
@@ -53,6 +136,19 @@ defmodule TimeManagerWeb.Router do
 
       get("/:userID", ClockController, :index)
       post("/:userID", ClockController, :create)
+    end
+
+    scope "/users/:userID" do
+      pipe_through [:require_auth, :require_user_access]
+
+      get "/work-policy", WorkPolicyController, :show_for_user
+      get "/clocks", ClockController, :index
+      post "/clocks", ClockController, :create
+      get "/working-times", WorkingTimeController, :index
+      post "/working-times", WorkingTimeController, :create
+      get "/working-times/:id", WorkingTimeController, :show
+      put "/working-times/:id", WorkingTimeController, :update_for_user
+      delete "/working-times/:id", WorkingTimeController, :delete_for_user
     end
   end
 

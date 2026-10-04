@@ -1,0 +1,86 @@
+:root {
+  --noir-950: #000000;
+  --noir-900: #111111;
+  --noir-800: #1b1b1b;
+  --noir-700: #2a2a2a;
+  --noir-500: #6f6f6f;
+  --noir-300: #c9c9c9;
+  --noir-150: #e8e8e8;
+  --noir-050: #f7f7f7;
+  --noir-white: #ffffff;
+  color: var(--noir-900);
+  background: var(--noir-050);
+}
+
+body {
+  color: var(--noir-900);
+  background: var(--noir-050);
+}
+
+/* Shared chrome */
+.app-shell { background: var(--noir-050) !important; }
+.sidebar { color: var(--noir-300) !important; background: var(--noir-950) !important; }
+.brand { color: var(--noir-white) !important; }
+.brand-symbol { border-color: var(--noir-white) !important; }
+.brand-symbol i { background: var(--noir-950) !important; border-color: var(--noir-white) !important; }
+.nav-section-title { color: var(--noir-white) !important; }
+.sidebar-link { color: var(--noir-300) !important; }
+.sidebar-link:hover, .sidebar-link.is-selected { color: var(--noir-white) !important; background: var(--noir-800) !important; }
+.sidebar-link.is-selected { box-shadow: inset 3px 0 var(--noir-white) !important; }
+.nav-icon, .sidebar-link:hover .nav-icon, .sidebar-link.is-selected .nav-icon { color: var(--noir-white) !important; }
+.sidebar-help { border-color: var(--noir-700) !important; }
+.help-orb { color: var(--noir-white) !important; border-color: var(--noir-500) !important; }
+.sidebar-help strong { color: var(--noir-white) !important; }
+.sidebar-help small, .sidebar-version { color: var(--noir-500) !important; }
+.sidebar-version span { color: var(--noir-white) !important; }
+.topbar { background: var(--noir-white) !important; border-color: var(--noir-150) !important; }
+.page-heading { color: var(--noir-900) !important; }
+.page-heading-dot { background: var(--noir-900) !important; }
+.profile-copy strong { color: var(--noir-900) !important; }
+.profile-copy small, .profile-chevron { color: var(--noir-500) !important; }
+.profile-menu { color: var(--noir-900) !important; background: var(--noir-white) !important; border-color: var(--noir-150) !important; }
+.profile-menu span { color: var(--noir-500) !important; }
+.profile-menu button, .signin-link { color: var(--noir-900) !important; }
+.avatar { color: var(--noir-white) !important; background: var(--noir-900) !important; }
+.mobile-scrim, .help-backdrop { background: rgba(0, 0, 0, .78) !important; }
+.help-dialog { color: var(--noir-900) !important; background: var(--noir-white) !important; }
+.help-kicker, .help-action { color: var(--noir-white) !important; background-color: var(--noir-900) !important; }
+.help-steps { background: var(--noir-050) !important; border-left-color: var(--noir-900) !important; }
+
+/* Shared content surfaces and controls */
+.dashboard-page, .charts-page, .clock-page, .working-time-page, .timeline-page, .admin-page { --ink: var(--noir-900) !important; --muted: var(--noir-500) !important; --line: rgba(0, 0, 0, .16) !important; --copper: var(--noir-900) !important; --blush: var(--noir-150) !important; --paper: var(--noir-white) !important; }
+.app-content .timeline-page, .app-content .clock-page, .app-content .working-time-page { width: min(100%, 1120px) !important; }
+.demo-notice { color: var(--noir-500) !important; background: var(--noir-050) !important; border-left-color: var(--noir-900) !important; }
+.stat-card.amber::before { background: var(--noir-500) !important; }
+.quota-ring.warning { --ring-color: var(--noir-500) !important; }
+.stat-card, .team-section, .chart-section, .attendance-card, .live-time-card, .quota-section, .weekly-section, .history-section, .chart-card, .state-card, .working-time-card, .timeline-card { background: var(--noir-white) !important; border-color: var(--noir-150) !important; box-shadow: 0 10px 26px rgba(8, 8, 8, .06) !important; }
+.btn-primary, .auth-submit { color: var(--noir-white) !important; background: var(--noir-900) !important; }
+.btn-secondary { color: var(--noir-900) !important; background: var(--noir-white) !important; border-color: var(--noir-150) !important; }
+.activity-chart { background: var(--noir-900) !important; border-color: var(--noir-700) !important; }
+.flip-digit { background: var(--noir-900) !important; }
+.bar-track { background: var(--noir-150) !important; }
+.bar-fill { background: var(--noir-900) !important; }
+.chart-badge, .badge-nights { color: var(--noir-white) !important; background: var(--noir-900) !important; }
+.link-btn, .refresh-link, .back-link { color: var(--noir-900) !important; }
+.clock-button, .clock-action { color: var(--noir-white) !important; background: #5f9478 !important; border-color: #5f9478 !important; }
+.clock-button.stop, .clock-action.clock-out { background: #b87373 !important; border-color: #b87373 !important; }
+.status.active { color: #5f9478 !important; }
+.status.active i { background: #5f9478 !important; box-shadow: 0 0 0 5px rgba(95, 148, 120, .15) !important; }
+.sidebar-link:focus-visible, .profile-button:focus-visible, .menu-toggle:focus-visible, .sidebar-help:focus-visible, button:focus-visible, a:focus-visible, input:focus-visible { outline-color: var(--noir-900) !important; }
+
+/* Authentication surfaces */
+.auth-page { color: var(--noir-900) !important; background: var(--noir-050) !important; }
+.auth-form-side { background: var(--noir-white) !important; }
+.auth-brand, .auth-form-content h1, .auth-field-label { color: var(--noir-900) !important; }
+.auth-brand-mark, .auth-submit { background: var(--noir-900) !important; }
+.auth-eyebrow { color: var(--noir-500) !important; }
+.auth-description, .auth-legal, .auth-switch { color: var(--noir-500) !important; }
+.auth-input-wrap { background: var(--noir-050) !important; border-color: var(--noir-150) !important; }
+.auth-input-wrap:focus-within { background: var(--noir-white) !important; border-color: var(--noir-900) !important; box-shadow: 0 0 0 4px rgba(0, 0, 0, .1) !important; }
+.auth-input { color: var(--noir-900) !important; }
+.auth-password-toggle, .auth-switch a { color: var(--noir-900) !important; }
+.auth-city-side { background-color: var(--noir-900) !important; }
+.auth-city-overlay { background: rgba(8, 8, 8, .52) !important; }
+.auth-city-content { background: rgba(8, 8, 8, .78) !important; border-color: rgba(255, 255, 255, .3) !important; }
+.auth-city-kicker { color: var(--noir-300) !important; }
+.caption-line { background: var(--noir-white) !important; }

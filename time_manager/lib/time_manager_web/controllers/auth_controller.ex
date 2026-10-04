@@ -28,10 +28,14 @@ defmodule TimeManagerWeb.AuthController do
       {:ok, user} ->
         csrf_token = generate_csrf_token()
 
+        {:ok, jwt, _claims} = TimeManager.Token.generate_and_sign(%{
+          "user_id" => user.id,
+          "role" => user.role,
+          "csrf_token" => csrf_token
+        })
+
         conn
-        |> put_session(:user_id, user.id)
-        |> put_session(:csrf_token, csrf_token)
-        |> put_resp_cookie("auth_token", auth_cookie_value(user.id, csrf_token),
+        |> put_resp_cookie("auth_token", jwt,
           http_only: true,
           secure: false,
           same_site: "Lax",
@@ -55,11 +59,14 @@ defmodule TimeManagerWeb.AuthController do
 
   def sign_out(conn, _params) do
     conn
-    |> clear_session()
     |> delete_resp_cookie("auth_token", path: "/")
     |> delete_resp_cookie("c-xsrf-token", path: "/")
     |> put_status(:ok)
     |> json(%{ok: true})
+  end
+
+  def me(conn, _params) do
+    json(conn, %{user: public_user(conn.assigns.current_user)})
   end
 
   defp public_user(user) do
@@ -69,10 +76,6 @@ defmodule TimeManagerWeb.AuthController do
       email: user.email,
       role: user.role
     }
-  end
-
-  defp auth_cookie_value(user_id, csrf_token) do
-    Base.encode64("#{user_id}:#{csrf_token}")
   end
 
   defp generate_csrf_token do

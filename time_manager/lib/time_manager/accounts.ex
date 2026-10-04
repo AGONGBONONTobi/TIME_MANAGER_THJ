@@ -60,7 +60,7 @@ defmodule TimeManager.Accounts do
   def valid_password?(%User{} = user, password) do
     case user.password_hash do
       nil -> false
-      hash -> hash == hash_password(password)
+      hash -> Bcrypt.verify_pass(password, hash)
     end
   end
 
@@ -76,9 +76,5 @@ defmodule TimeManager.Accounts do
 
   def change_user(%User{} = user, attrs \\ %{}) do
     User.changeset(user, attrs)
-  end
-
-  defp hash_password(password) do
-    :crypto.hash(:sha256, password) |> Base.encode16(case: :lower)
   end
 end

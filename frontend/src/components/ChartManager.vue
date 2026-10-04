@@ -128,8 +128,8 @@ export default {
           {
             label: 'Heures travaillées',
             data: hoursByDay,
-            backgroundColor: '#3b82f6',
-            borderColor: '#2563eb',
+            backgroundColor: '#607994',
+            borderColor: '#536b84',
             borderWidth: 1,
             borderRadius: 4
           }
@@ -143,13 +143,13 @@ export default {
           {
             data: hoursByDay,
             backgroundColor: [
-              '#3b82f6', // bleu
-              '#10b981', // vert
-              '#f59e0b', // orange
-              '#ef4444', // rouge
-              '#8b5cf6', // violet
-              '#ec4899', // rose
-              '#06b6d4'  // cyan
+              '#607994',
+              '#6f8f82',
+              '#8a8f96',
+              '#ad7e7e',
+              '#887a9c',
+              '#668d95',
+              '#9a8f7e'
             ],
             borderColor: '#fff',
             borderWidth: 2
@@ -165,11 +165,11 @@ export default {
           {
             label: 'Heures par jour',
             data: byDate.values,
-            borderColor: '#3b82f6',
-            backgroundColor: 'rgba(59, 130, 246, 0.15)',
+            borderColor: '#536b84',
+            backgroundColor: 'rgba(96, 121, 148, 0.14)',
             tension: 0.3,
             fill: true,
-            pointBackgroundColor: '#3b82f6',
+            pointBackgroundColor: '#607994',
             pointBorderColor: '#fff',
             pointRadius: 4
           }

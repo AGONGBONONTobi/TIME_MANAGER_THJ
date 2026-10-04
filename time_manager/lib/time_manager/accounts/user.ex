@@ -47,7 +47,7 @@ defmodule TimeManager.Accounts.User do
         changeset
 
       password ->
-        put_change(changeset, :password_hash, :crypto.hash(:sha256, password) |> Base.encode16(case: :lower))
+        put_change(changeset, :password_hash, Bcrypt.hash_pwd_salt(password))
     end
   end
 end

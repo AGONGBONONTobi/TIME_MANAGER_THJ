@@ -8,7 +8,7 @@ env:
     - DOCKER_API_IMAGE=$DOCKER_USER/time-manager-api
     - DOCKER_FRONT_IMAGE=$DOCKER_USER/time-manager-front
     - VM_USER=travis
-    - VM_IP=34.122.33.216
+    - VM_IP=34.63.107.228
     - DEPLOY_PATH=/home/travis/TIME_MANAGER_THJ
 
 stages:

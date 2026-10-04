@@ -40,7 +40,7 @@ config :logger, :console,
 config :phoenix, :json_library, Jason
 
 config :joken,
-  default_signer: "secret_signer_key_for_time_manager_application_that_is_long_enough_2026"
+  default_signer: System.get_env("JWT_SECRET") || "secret_signer_key_for_time_manager_application_that_is_long_enough_2026"
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

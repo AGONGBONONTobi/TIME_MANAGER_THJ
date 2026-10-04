@@ -1,5 +1,6 @@
 <script>
 import api from '../services/api'
+import { readAuthUser } from '../utils/auth'
 
 export default {
   name: 'ManagerDashboard',
@@ -8,6 +9,7 @@ export default {
       now: new Date(),
       timerId: null,
       selectedIds: [],
+      currentUserName: readAuthUser()?.username || 'Manager',
       employees: [],
       teams: [],
       users: [],
@@ -171,7 +173,7 @@ export default {
     <div class="welcome-row">
       <div>
         <p class="dashboard-kicker">TABLEAU DE BORD MANAGER</p>
-        <h1>Bonjour, Manager</h1>
+        <h1>Bonjour, {{ currentUserName }}</h1>
         <p class="dashboard-date">{{ todayLabel }}</p>
       </div>
       <div class="clock-box">

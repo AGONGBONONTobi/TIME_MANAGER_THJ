@@ -41,6 +41,7 @@ export default {
     return {
       loading: true,
       error: '',
+      userName: '',
       workingtimes: [],
       barData: null,
       pieData: null,
@@ -58,8 +59,19 @@ export default {
   },
   mounted() {
     this.fetchWorkingTimes()
+    this.fetchUserName()
   },
   methods: {
+    async fetchUserName() {
+      const userID = this.$route.params.userID
+      if (!userID) return
+      try {
+        const response = await api.getUser(userID)
+        this.userName = response.data?.data?.username || response.data?.username || `Utilisateur #${userID}`
+      } catch {
+        this.userName = `Utilisateur #${userID}`
+      }
+    },
     async fetchWorkingTimes() {
       const userID = this.$route.params.userID
       if (!userID) {
@@ -184,7 +196,7 @@ export default {
   <section class="charts-page">
     <header class="charts-header">
       <div>
-        <p class="eyebrow">ANALYSE PERSONNELLE · UTILISATEUR {{ $route.params.userID }}</p>
+        <p class="eyebrow">ANALYSE PERSONNELLE · <span v-if="userName">{{ userName }}</span><span v-else>Chargement…</span></p>
         <h1>Vos heures, <em>en clair.</em></h1>
         <p>Une lecture simple de vos rythmes de travail, sans masquer les jours de nuit.</p>
       </div>
@@ -213,6 +225,6 @@ export default {
 </template>
 
 <style scoped>
-.charts-page { --ink: #252522; --muted: #716b64; --line: rgba(37, 33, 27, .14); --copper: #a7673c; width: min(100%, 1120px); margin: 4rem auto 3rem; color: var(--ink); }.charts-header { display: flex; align-items: end; justify-content: space-between; gap: 2rem; padding-bottom: 2rem; border-bottom: 1px solid var(--line); }.eyebrow, .card-kicker { margin: 0 0 .7rem; color: var(--copper); font-size: .7rem; font-weight: 800; letter-spacing: .14em; }.charts-header h1 { margin: 0; font-size: clamp(2.7rem, 7vw, 5.8rem); line-height: .92; letter-spacing: -.075em; }.charts-header h1 em { color: var(--copper); font-family: Georgia, serif; font-weight: 400; }.charts-header p:not(.eyebrow) { max-width: 520px; margin: 1rem 0 0; color: var(--muted); line-height: 1.6; }.back-link { color: var(--ink); font-size: .75rem; font-weight: 800; white-space: nowrap; }.state-card { margin: 2rem 0 0; padding: 1.2rem; color: var(--muted); background: #fff; border: 1px solid var(--line); }.state-card.error { color: #b6444d; border-left: 3px solid #e85d65; }.charts-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 2rem; }.chart-card { min-width: 0; padding: 1.35rem; background: #fff; border: 1px solid var(--line); box-shadow: 0 12px 30px rgba(37, 33, 27, .05); }.chart-card-wide { grid-column: 1 / -1; }.chart-card-heading { display: flex; align-items: start; justify-content: space-between; gap: 1rem; }.chart-card h2 { margin: 0; font-size: 1.15rem; letter-spacing: -.04em; }.chart-card .card-kicker { margin-bottom: .4rem; }.chart-badge { padding: .35rem .55rem; color: #786be7; background: #f1efff; border-radius: 99px; font-size: .65rem; font-weight: 800; white-space: nowrap; }.chart-canvas { min-height: 270px; margin-top: 1.3rem; }.chart-canvas-pie { display: grid; place-items: center; }.chart-canvas :deep(canvas) { max-width: 100%; }
+.charts-page { --ink: #252522; --muted: #716b64; --line: rgba(37, 33, 27, .14); --copper: #a7673c; width: min(100%, 1120px); margin: 0 auto; color: var(--ink); }.charts-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 2rem; padding-bottom: 1.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--line); }.eyebrow, .card-kicker { margin: 0 0 8px; color: #8a7cf0; font-size: 10px; font-weight: 800; letter-spacing: .12em; }.charts-header h1 { margin: 0; font: 800 clamp(25px, 3.5vw, 34px) 'Manrope', sans-serif; letter-spacing: -.055em; line-height: 1.1; }.charts-header h1 em { color: var(--copper); font-style: italic; font-weight: 400; }.charts-header p:not(.eyebrow) { max-width: 520px; margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.6; }.back-link { color: var(--ink); font-size: .75rem; font-weight: 800; white-space: nowrap; flex-shrink: 0; }.state-card { margin: 2rem 0 0; padding: 1.2rem; color: var(--muted); background: #fff; border: 1px solid var(--line); }.state-card.error { color: #b6444d; border-left: 3px solid #e85d65; }.charts-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 2rem; }.chart-card { min-width: 0; padding: 1.35rem; background: #fff; border: 1px solid var(--line); box-shadow: 0 12px 30px rgba(37, 33, 27, .05); }.chart-card-wide { grid-column: 1 / -1; }.chart-card-heading { display: flex; align-items: start; justify-content: space-between; gap: 1rem; }.chart-card h2 { margin: 0; font-size: 1.15rem; letter-spacing: -.04em; }.chart-card .card-kicker { margin-bottom: .4rem; }.chart-badge { padding: .35rem .55rem; color: #786be7; background: #f1efff; border-radius: 99px; font-size: .65rem; font-weight: 800; white-space: nowrap; }.chart-canvas { min-height: 270px; margin-top: 1.3rem; }.chart-canvas-pie { display: grid; place-items: center; }.chart-canvas :deep(canvas) { max-width: 100%; }
 @media (max-width: 760px) { .charts-page { width: min(100% - 1rem, 1120px); margin-top: 2.5rem; }.charts-header { display: block; }.back-link { display: inline-block; margin-top: 1.5rem; }.charts-grid { grid-template-columns: 1fr; }.chart-card-wide { grid-column: auto; } }
 </style>

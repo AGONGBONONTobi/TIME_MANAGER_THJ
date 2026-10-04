@@ -146,6 +146,7 @@ export default {
         <div class="topbar-actions">
           <button class="theme-toggle" type="button" aria-label="Basculer le thème" @click="toggleDarkMode">
             <span aria-hidden="true">{{ isDarkMode ? '☀️' : '🌙' }}</span>
+            <span>{{ isDarkMode ? 'Clair' : 'Sombre' }}</span>
           </button>
           <button v-if="isAuthenticated" class="profile-button" type="button" :aria-expanded="isProfileOpen" aria-controls="profile-menu" @click="isProfileOpen = !isProfileOpen"><span class="avatar avatar-small" aria-hidden="true">{{ userInitials }}</span><span class="profile-copy"><strong>{{ currentUser.username || 'Utilisateur' }}</strong><small>{{ userRoleLabel }}</small></span><span class="profile-chevron" aria-hidden="true">⌄</span></button>
           <router-link v-else class="signin-link" to="/sign_in">Connexion</router-link>
@@ -179,7 +180,24 @@ export default {
 @media (max-width: 520px) { .profile-copy, .profile-chevron { display: none; }.topbar-actions { gap: 10px; }.app-content { padding-right: 14px; padding-left: 14px; } }
 .skip-link { position: fixed; z-index: 100; top: -100px; left: 16px; padding: 10px 14px; color: #fff; background: #1d2430; border-radius: 7px; }.skip-link:focus { top: 16px; }
 
-.theme-toggle { background: transparent; border: none; font-size: 20px; cursor: pointer; padding: 5px; }
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: rgba(120, 107, 231, 0.12);
+  border: 1px solid rgba(120, 107, 231, 0.3);
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #5d4fcf;
+  cursor: pointer;
+  transition: background .2s, transform .15s;
+  white-space: nowrap;
+}
+.theme-toggle:hover { background: rgba(120, 107, 231, 0.22); transform: scale(1.04); }
+.theme-dark .theme-toggle { background: rgba(167, 139, 250, 0.15); border-color: rgba(167, 139, 250, 0.35); color: #c4b5fd; }
+.theme-dark .theme-toggle:hover { background: rgba(167, 139, 250, 0.25); }
 .theme-dark body, .theme-dark .app-shell, .theme-dark .auth-shell { background: #111827 !important; color: #f3f4f6 !important; }
 .theme-dark .topbar { background: #1f2937 !important; border-bottom-color: #374151 !important; }
 .theme-dark .page-heading { color: #f3f4f6 !important; }

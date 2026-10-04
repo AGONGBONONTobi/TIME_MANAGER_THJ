@@ -207,8 +207,7 @@ export default {
 /* Surfaces principales */
 .theme-dark,
 .theme-dark body,
-.theme-dark .app-shell,
-.theme-dark .auth-shell {
+.theme-dark .app-shell {
   background: #0d0d0d !important;
   color: #f0f0f0 !important;
 }
@@ -238,11 +237,12 @@ export default {
 /* Contenu principal */
 .theme-dark .app-content { background: #0d0d0d !important; }
 
-/* Titres */
+/* Titres et textes gras */
 .theme-dark h1,
 .theme-dark h2,
 .theme-dark h3,
-.theme-dark h4 { color: #ffffff !important; }
+.theme-dark h4,
+.theme-dark strong { color: #ffffff !important; }
 
 /* Textes secondaires */
 .theme-dark p,
@@ -258,6 +258,7 @@ export default {
   color: #f0f0f0 !important;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6) !important;
 }
+.theme-dark .profile-menu button { color: #fff !important; }
 
 /* Cards et panels — fond légèrement élevé, bordure blanche subtile */
 .theme-dark .session-card,
@@ -322,9 +323,11 @@ export default {
 /* Boutons secondaires */
 .theme-dark .refresh-button,
 .theme-dark .filter-button,
+.theme-dark .reset-button,
 .theme-dark .back-link { background: transparent !important; color: rgba(255,255,255,0.75) !important; border-color: rgba(255,255,255,0.15) !important; }
 .theme-dark .refresh-button:hover,
-.theme-dark .filter-button:hover { background: rgba(255,255,255,0.07) !important; color: #fff !important; }
+.theme-dark .filter-button:hover,
+.theme-dark .reset-button:hover { background: rgba(255,255,255,0.07) !important; color: #fff !important; }
 
 /* État vide (blush → dark) */
 .theme-dark .empty-state { background: #1a1a1a !important; border-color: rgba(255,255,255,0.1) !important; }

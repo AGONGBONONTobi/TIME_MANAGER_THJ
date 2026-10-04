@@ -321,7 +321,7 @@ export default {
 /* Boutons secondaires */
 .theme-dark .refresh-button,
 .theme-dark .filter-button,
-.theme-dark .back-link { color: rgba(255,255,255,0.75) !important; border-color: rgba(255,255,255,0.15) !important; }
+.theme-dark .back-link { background: transparent !important; color: rgba(255,255,255,0.75) !important; border-color: rgba(255,255,255,0.15) !important; }
 .theme-dark .refresh-button:hover,
 .theme-dark .filter-button:hover { background: rgba(255,255,255,0.07) !important; color: #fff !important; }
 

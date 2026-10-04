@@ -269,6 +269,7 @@ export default {
 .theme-dark .team-section,
 .theme-dark .chart-section,
 .theme-dark .teams-section,
+.theme-dark .filters-panel,
 .theme-dark [class*="-card"]:not(.theme-toggle) {
   background: #181818 !important;
   border-color: rgba(255, 255, 255, 0.1) !important;

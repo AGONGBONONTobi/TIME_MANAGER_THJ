@@ -1,117 +1,84 @@
-<!-- src/components/ClockManager.vue -->
-<template>
-  <div class="card p-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h2>⏰ Clocks (User {{ userID }})</h2>
-      <button
-        class="btn"
-        :class="clockIn ? 'btn-danger' : 'btn-success'"
-        @click="clock"
-      >
-        {{ clockIn ? '🔴 Pointer la sortie' : '🟢 Pointer l\'entrée' }}
-      </button>
-    </div>
-
-    <div class="d-flex gap-2 mb-3">
-      <button class="btn btn-outline-primary" @click="refresh">
-        🔄 Rafraîchir
-      </button>
-      <span v-if="clockIn" class="badge bg-success align-self-center">
-        Pointage en cours depuis {{ lastClock ? formatTime(lastClock.time) : '—' }}
-      </span>
-      <span v-else class="badge bg-secondary align-self-center">
-        Aucun pointage en cours
-      </span>
-    </div>
-
-    <table class="table table-striped" v-if="clocks.length">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Heure</th>
-          <th>Statut</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="c in sortedClocks" :key="c.id">
-          <td>{{ c.id }}</td>
-          <td>{{ formatTime(c.time) }}</td>
-          <td>
-            <span
-              class="badge"
-              :class="c.status ? 'bg-success' : 'bg-secondary'"
-            >
-              {{ c.status ? 'in' : 'out' }}
-            </span>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-
-    <p v-else class="text-muted">Aucun pointage enregistré.</p>
-  </div>
-</template>
-
 <script>
 import api from '../services/api'
+import { readAuthUser } from '../utils/auth'
 
 export default {
   name: 'ClockManager',
-  props: ['userID'],
+  props: { userID: { type: [String, Number], required: true } },
   data() {
-    return {
-      clocks: []
-    }
+    return { clocks: [], startDateTime: null, clockIn: false, isLoading: false, isClocking: false, errorMessage: '', userName: '' }
   },
-  computed: {
-    sortedClocks() {
-      return [...this.clocks].sort(
-        (a, b) => new Date(b.time) - new Date(a.time)
-      )
-    },
-    lastClock() {
-      return this.sortedClocks[0] || null
-    },
-    clockIn() {
-      return this.lastClock ? this.lastClock.status === true : false
-    }
-  },
-  mounted() {
-    this.refresh()
-  },
+  mounted() { this.loadUserName(); this.refresh() },
   methods: {
-    formatTime(iso) {
-      if (!iso) return '—'
-      return new Date(iso).toLocaleString()
+    async loadUserName() {
+      try {
+        const response = await api.getUser(this.userID)
+        this.userName = response.data?.data?.username || response.data?.username || readAuthUser()?.username || `Utilisateur #${this.userID}`
+      } catch {
+        this.userName = readAuthUser()?.username || `Utilisateur #${this.userID}`
+      }
     },
-
     async refresh() {
-      if (!this.userID) return
+      this.isLoading = true
+      this.errorMessage = ''
       try {
-        const res = await api.get(`/clocks/${this.userID}`)
-        this.clocks = res.data?.data ?? []
-      } catch (err) {
-        console.error(err)
-        this.clocks = []
+        const response = await api.getClocks(this.userID)
+        this.clocks = response.data.data || []
+        const latestClock = this.clocks[0]
+        this.clockIn = Boolean(latestClock?.status)
+        this.startDateTime = this.clockIn ? latestClock.time : null
+      } catch {
+        this.errorMessage = 'Impossible de charger les pointages.'
+      } finally {
+        this.isLoading = false
       }
     },
-
     async clock() {
-      if (!this.userID) return alert('Aucun utilisateur')
+      this.isClocking = true
+      this.errorMessage = ''
       try {
-        await api.post(`/clocks/${this.userID}`, {
-          time: new Date().toISOString(),
-          status: !this.clockIn
-        })
+        await api.clockInOut(this.userID)
         await this.refresh()
-      } catch (err) {
-        console.error(err)
-        alert('Erreur lors du pointage')
+      } catch (error) {
+        this.errorMessage = error.response?.data?.error === 'already clocked in'
+          ? 'Une session est déjà en cours.'
+          : 'Le pointage n’a pas pu être enregistré.'
+      } finally {
+        this.isClocking = false
       }
+    },
+    formatDateTime(value) {
+      return value ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—'
     }
   }
 }
 </script>
 
+<template>
+  <section class="clock-page">
+    <div class="clock-header">
+      <div>
+        <p class="eyebrow">POINTAGE · <span v-if="userName">{{ userName }}</span><span v-else>Chargement…</span></p>
+        <h1>Déclarer ses heures.</h1>
+        <p class="intro">Le bouton alterne entre le début et la fin de votre période de travail.</p>
+      </div>
+      <router-link class="back-link" :to="{ name: 'user' }">Retour au tableau de bord</router-link>
+    </div>
+    <div class="clock-card">
+      <span class="status-label">État actuel</span>
+      <strong class="status" :class="{ active: clockIn }"><i></i>{{ clockIn ? 'En cours' : 'Au repos' }}</strong>
+      <p v-if="clockIn">Session commencée le {{ formatDateTime(startDateTime) }}</p>
+      <p v-else>Aucune période de travail en cours.</p>
+      <p v-if="errorMessage" class="error" role="alert">{{ errorMessage }}</p>
+      <div class="actions">
+        <button class="clock-button" :class="{ stop: clockIn }" type="button" :disabled="isLoading || isClocking" @click="clock">{{ isClocking ? 'Enregistrement…' : clockIn ? 'Clock Out' : 'Clock In' }}</button>
+        <button class="refresh-button" type="button" :disabled="isLoading" @click="refresh">Actualiser</button>
+      </div>
+    </div>
+  </section>
+</template>
+
 <style scoped>
+.clock-page { --ink: #252522; --muted: #716b64; --line: rgba(37, 33, 27, .14); --copper: #786be7; width: min(100%, 760px); margin: 0 auto; color: var(--ink); }.clock-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 2rem; padding-bottom: 1.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--line); }.eyebrow { margin: 0 0 8px; color: #8a7cf0; font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }.clock-header h1 { margin: 0; font: 800 clamp(25px, 3.5vw, 34px) 'Manrope', sans-serif; letter-spacing: -.055em; line-height: 1.1; }.intro { max-width: 500px; margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.6; }.back-link { color: var(--ink); font-size: .75rem; font-weight: 800; white-space: nowrap; flex-shrink: 0; }.clock-card { display: grid; gap: .75rem; margin-top: 2rem; padding: 2rem; background: #fff; border: 1px solid var(--line); border-radius: 12px; }.status-label { color: var(--muted); font-size: .7rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }.status { display: flex; align-items: center; gap: .5rem; font-size: 1.5rem; }.status i { width: 10px; height: 10px; background: #96918a; border-radius: 50%; }.status.active { color: #638b63; }.status.active i { background: #638b63; box-shadow: 0 0 0 5px rgba(99, 139, 99, .15); }.clock-card p { margin: 0; color: var(--muted); font-size: .85rem; }.error { color: #b6444d !important; }.actions { display: flex; gap: .75rem; margin-top: .75rem; }.clock-button, .refresh-button { min-height: 42px; padding: .7rem 1rem; font-size: .75rem; font-weight: 800; cursor: pointer; border-radius: 8px; }.clock-button { color: #fff; background: #47ad79; border: 1px solid #47ad79; }.clock-button.stop { background: #e85d65; border-color: #e85d65; }.refresh-button { color: var(--ink); background: transparent; border: 1px solid var(--line); }.clock-button:disabled, .refresh-button:disabled { cursor: wait; opacity: .55; }
+@media (max-width: 680px) { .clock-page { width: min(100% - 1rem, 760px); margin-top: 3rem; }.clock-header { display: block; }.back-link { display: inline-block; margin-top: 1.5rem; } }
 </style>

@@ -41,6 +41,7 @@ export default {
     return {
       loading: true,
       error: '',
+      userName: '',
       workingtimes: [],
       barData: null,
       pieData: null,
@@ -58,8 +59,19 @@ export default {
   },
   mounted() {
     this.fetchWorkingTimes()
+    this.fetchUserName()
   },
   methods: {
+    async fetchUserName() {
+      const userID = this.$route.params.userID
+      if (!userID) return
+      try {
+        const response = await api.getUser(userID)
+        this.userName = response.data?.data?.username || response.data?.username || `Utilisateur #${userID}`
+      } catch {
+        this.userName = `Utilisateur #${userID}`
+      }
+    },
     async fetchWorkingTimes() {
       const userID = this.$route.params.userID
       if (!userID) {
@@ -128,8 +140,8 @@ export default {
           {
             label: 'Heures travaillées',
             data: hoursByDay,
-            backgroundColor: '#3b82f6',
-            borderColor: '#2563eb',
+            backgroundColor: '#607994',
+            borderColor: '#536b84',
             borderWidth: 1,
             borderRadius: 4
           }
@@ -143,13 +155,13 @@ export default {
           {
             data: hoursByDay,
             backgroundColor: [
-              '#3b82f6', // bleu
-              '#10b981', // vert
-              '#f59e0b', // orange
-              '#ef4444', // rouge
-              '#8b5cf6', // violet
-              '#ec4899', // rose
-              '#06b6d4'  // cyan
+              '#607994',
+              '#6f8f82',
+              '#8a8f96',
+              '#ad7e7e',
+              '#887a9c',
+              '#668d95',
+              '#9a8f7e'
             ],
             borderColor: '#fff',
             borderWidth: 2
@@ -165,11 +177,11 @@ export default {
           {
             label: 'Heures par jour',
             data: byDate.values,
-            borderColor: '#3b82f6',
-            backgroundColor: 'rgba(59, 130, 246, 0.15)',
+            borderColor: '#536b84',
+            backgroundColor: 'rgba(96, 121, 148, 0.14)',
             tension: 0.3,
             fill: true,
-            pointBackgroundColor: '#3b82f6',
+            pointBackgroundColor: '#607994',
             pointBorderColor: '#fff',
             pointRadius: 4
           }
@@ -181,70 +193,38 @@ export default {
 </script>
 
 <template>
-  <div class="container mt-4">
-    <h1 class="mb-4">📊 Tableau de bord</h1>
-
-    <div v-if="loading" class="alert alert-info">
-      Chargement des graphiques...
-    </div>
-
-    <div v-if="error" class="alert alert-danger">
-      {{ error }}
-    </div>
-
-    <div v-if="!loading && !error && workingtimes.length === 0" class="alert alert-warning">
-      Aucune donnée de temps de travail pour cet utilisateur.
-    </div>
-
-    <div v-if="!loading && !error && workingtimes.length > 0">
-      <!-- Graphique 1 : BAR (pleine largeur) -->
-      <div class="row mb-4">
-        <div class="col-12">
-          <div class="card shadow-sm">
-            <div class="card-header bg-primary text-white">
-              <h5 class="mb-0">📈 Heures travaillées par jour de la semaine</h5>
-            </div>
-            <div class="card-body">
-              <Bar :data="barData" :options="chartOptions" />
-            </div>
-          </div>
-        </div>
+  <section class="charts-page">
+    <header class="charts-header">
+      <div>
+        <p class="eyebrow">ANALYSE PERSONNELLE · <span v-if="userName">{{ userName }}</span><span v-else>Chargement…</span></p>
+        <h1>Vos heures, <em>en clair.</em></h1>
+        <p>Une lecture simple de vos rythmes de travail, sans masquer les jours de nuit.</p>
       </div>
+      <router-link class="back-link" :to="{ name: 'user' }">Retour au tableau de bord</router-link>
+    </header>
 
-      <!-- Graphiques 2 et 3 (côte à côte) -->
-      <div class="row">
-        <div class="col-md-6 mb-4">
-          <div class="card shadow-sm h-100">
-            <div class="card-header bg-success text-white">
-              <h5 class="mb-0">🥧 Répartition par jour</h5>
-            </div>
-            <div class="card-body d-flex align-items-center justify-content-center">
-              <Pie :data="pieData" :options="chartOptions" />
-            </div>
-          </div>
-        </div>
+    <p v-if="loading" class="state-card" role="status">Chargement des graphiques…</p>
+    <p v-if="error" class="state-card error" role="alert">{{ error }}</p>
+    <p v-if="!loading && !error && workingtimes.length === 0" class="state-card">Aucune donnée de temps de travail pour cet utilisateur.</p>
 
-        <div class="col-md-6 mb-4">
-          <div class="card shadow-sm h-100">
-            <div class="card-header bg-warning text-dark">
-              <h5 class="mb-0">📉 Évolution sur le mois</h5>
-            </div>
-            <div class="card-body">
-              <LineChart :data="lineData" :options="chartOptions" />
-            </div>
-          </div>
-        </div>
-      </div>
+    <div v-if="!loading && !error && workingtimes.length > 0" class="charts-grid">
+      <article class="chart-card chart-card-wide">
+        <div class="chart-card-heading"><div><p class="card-kicker">VOLUME HEBDOMADAIRE</p><h2>Heures travaillées par jour</h2></div><span class="chart-badge">Barres</span></div>
+        <div class="chart-canvas" role="img" aria-label="Graphique des heures travaillées par jour de la semaine"><Bar :data="barData" :options="chartOptions" /></div>
+      </article>
+      <article class="chart-card">
+        <div class="chart-card-heading"><div><p class="card-kicker">RÉPARTITION</p><h2>Part de chaque jour</h2></div><span class="chart-badge">Répartition</span></div>
+        <div class="chart-canvas chart-canvas-pie" role="img" aria-label="Graphique de répartition des heures par jour"><Pie :data="pieData" :options="chartOptions" /></div>
+      </article>
+      <article class="chart-card">
+        <div class="chart-card-heading"><div><p class="card-kicker">ÉVOLUTION</p><h2>Rythme au fil des dates</h2></div><span class="chart-badge">Ligne</span></div>
+        <div class="chart-canvas" role="img" aria-label="Graphique de l'évolution des heures par date"><LineChart :data="lineData" :options="chartOptions" /></div>
+      </article>
     </div>
-  </div>
+  </section>
 </template>
 
 <style scoped>
-.card {
-  border-radius: 8px;
-}
-
-.card-header {
-  border-radius: 8px 8px 0 0 !important;
-}
+.charts-page { --ink: #252522; --muted: #716b64; --line: rgba(37, 33, 27, .14); --copper: #a7673c; width: min(100%, 1120px); margin: 0 auto; color: var(--ink); }.charts-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 2rem; padding-bottom: 1.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--line); }.eyebrow, .card-kicker { margin: 0 0 8px; color: #8a7cf0; font-size: 10px; font-weight: 800; letter-spacing: .12em; }.charts-header h1 { margin: 0; font: 800 clamp(25px, 3.5vw, 34px) 'Manrope', sans-serif; letter-spacing: -.055em; line-height: 1.1; }.charts-header h1 em { color: var(--copper); font-style: italic; font-weight: 400; }.charts-header p:not(.eyebrow) { max-width: 520px; margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.6; }.back-link { color: var(--ink); font-size: .75rem; font-weight: 800; white-space: nowrap; flex-shrink: 0; }.state-card { margin: 2rem 0 0; padding: 1.2rem; color: var(--muted); background: #fff; border: 1px solid var(--line); }.state-card.error { color: #b6444d; border-left: 3px solid #e85d65; }.charts-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 2rem; }.chart-card { min-width: 0; padding: 1.35rem; background: #fff; border: 1px solid var(--line); box-shadow: 0 12px 30px rgba(37, 33, 27, .05); }.chart-card-wide { grid-column: 1 / -1; }.chart-card-heading { display: flex; align-items: start; justify-content: space-between; gap: 1rem; }.chart-card h2 { margin: 0; font-size: 1.15rem; letter-spacing: -.04em; }.chart-card .card-kicker { margin-bottom: .4rem; }.chart-badge { padding: .35rem .55rem; color: #786be7; background: #f1efff; border-radius: 99px; font-size: .65rem; font-weight: 800; white-space: nowrap; }.chart-canvas { min-height: 270px; margin-top: 1.3rem; }.chart-canvas-pie { display: grid; place-items: center; }.chart-canvas :deep(canvas) { max-width: 100%; }
+@media (max-width: 760px) { .charts-page { width: min(100% - 1rem, 1120px); margin-top: 2.5rem; }.charts-header { display: block; }.back-link { display: inline-block; margin-top: 1.5rem; }.charts-grid { grid-template-columns: 1fr; }.chart-card-wide { grid-column: auto; } }
 </style>

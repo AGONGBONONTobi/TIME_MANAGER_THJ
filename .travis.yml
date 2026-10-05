@@ -7,9 +7,9 @@ env:
   global:
     - DOCKER_API_IMAGE=$DOCKER_USER/time-manager-api
     - DOCKER_FRONT_IMAGE=$DOCKER_USER/time-manager-front
-    - VM_USER=travis
-    - VM_IP=34.122.33.216
-    - DEPLOY_PATH=/home/travis/TIME_MANAGER_THJ
+    - VM_USER=tobiagongbonon
+    - VM_IP=34.63.107.228
+    - DEPLOY_PATH=/home/tobiagongbonon/TIME_MANAGER_THJ
 
 stages:
   - name: build & push images
@@ -18,6 +18,27 @@ stages:
 
 jobs:
   include:
+    # Stage 0 — Run test suite
+    - stage: test
+      language: elixir
+      elixir: '1.20'
+      otp_release: '27'
+      services:
+        - postgresql
+      env:
+        - MIX_ENV=test
+        - DATABASE_URL=ecto://postgres@localhost/time_manager_test
+        - SECRET_KEY_BASE=postges
+      before_script:
+        - psql -c 'CREATE DATABASE time_manager_test;' -U postgres
+      script:
+        - cd time_manager
+        - mix local.hex --force
+        - mix local.rebar --force
+        - mix deps.get
+        - mix ecto.create --quiet || true
+        - mix ecto.migrate
+        - mix test
     # Stage 1 — Build & Push des 2 images
     - stage: build & push images
       script:

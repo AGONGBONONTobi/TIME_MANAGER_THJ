@@ -11,6 +11,8 @@ defmodule TimeManagerWeb.WorkingTimeControllerTest do
   end
 
   test "workingtime CRUD uses the required routes", %{conn: conn, user: user} do
+    conn = auth_conn(conn, user)
+
     created = post(conn, "/api/workingtime/#{user.id}")
     assert %{"id" => id, "user_id" => user_id} = json_response(created, 201)["data"]
     assert user_id == user.id
@@ -29,6 +31,8 @@ defmodule TimeManagerWeb.WorkingTimeControllerTest do
   end
 
   test "workingtime POST uses the clock arrival/departure workflow", %{conn: conn, user: user} do
+    conn = auth_conn(conn, user)
+
     arrival = post(conn, "/api/workingtime/#{user.id}")
     assert response(arrival, 201)
     assert json_response(arrival, 201)["data"]["end"] == nil
@@ -36,5 +40,11 @@ defmodule TimeManagerWeb.WorkingTimeControllerTest do
     departure = post(conn, "/api/workingtime/#{user.id}")
     assert response(departure, 201)
     assert json_response(departure, 201)["data"]["end"] != nil
+  end
+
+  defp auth_conn(conn, user) do
+    conn
+    |> Plug.Test.init_test_session(%{user_id: user.id, csrf_token: "test-token"})
+    |> put_req_header("x-xsrf-token", "test-token")
   end
 end

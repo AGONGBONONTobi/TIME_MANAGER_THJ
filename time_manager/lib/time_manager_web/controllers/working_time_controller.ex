@@ -129,6 +129,16 @@ defmodule TimeManagerWeb.WorkingTimeController do
     end
   end
 
+  def update_for_user(conn, %{"userID" => user_id, "id" => id} = params) do
+    case WorkingTimes.get_for_user(user_id, id) do
+      nil ->
+        conn |> put_status(:not_found) |> json(%{error: "WorkingTime not found"})
+
+      working_time ->
+        update_working_time_response(conn, working_time, working_time_attrs(params))
+    end
+  end
+
   # DELETE /api/workingtime/:id
   def delete(conn, %{"id" => id}) do
     case WorkingTimes.get_working_time(id) do
@@ -140,6 +150,30 @@ defmodule TimeManagerWeb.WorkingTimeController do
       working_time ->
         WorkingTimes.delete_working_time(working_time)
         send_resp(conn, :no_content, "")
+    end
+  end
+
+  def delete_for_user(conn, %{"userID" => user_id, "id" => id}) do
+    case WorkingTimes.get_for_user(user_id, id) do
+      nil ->
+        conn |> put_status(:not_found) |> json(%{error: "WorkingTime not found"})
+
+      working_time ->
+        WorkingTimes.delete_working_time(working_time)
+        send_resp(conn, :no_content, "")
+    end
+  end
+
+  defp update_working_time_response(conn, working_time, attrs) do
+    case WorkingTimes.update_working_time(working_time, attrs) do
+      {:ok, wt} ->
+        conn |> put_status(:ok) |> render(:show, working_time: wt)
+
+      {:error, changeset} ->
+        conn
+        |> put_status(:bad_request)
+        |> put_view(json: TimeManagerWeb.ChangesetJSON)
+        |> render(:error, changeset: changeset)
     end
   end
 

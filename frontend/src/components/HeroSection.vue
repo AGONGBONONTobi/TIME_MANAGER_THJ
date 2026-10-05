@@ -36,7 +36,7 @@
 
 .hero-eyebrow {
   margin-bottom: 1rem;
-  color: #e5c8a8;
+  color: #fff;
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.18em;
@@ -60,7 +60,7 @@ hr {
   width: 70px;
   margin: 1.75rem auto;
   border: 0;
-  border-top: 2px solid #e5c8a8;
+  border-top: 2px solid #fff;
   opacity: 1;
 }
 

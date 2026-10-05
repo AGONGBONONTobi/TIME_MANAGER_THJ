@@ -2,7 +2,11 @@
 
 ## Périmètre
 
+<<<<<<< HEAD
 Cette branche contient les parcours **Utilisateur** et **RH / Administration**. La vue Manager n'est pas intégrée ici : elle pourra avoir sa propre page et sa propre navigation plus tard.
+=======
+Cette branche contient trois parcours frontend : **Utilisateur**, **Manager** et **Admin/RH**. Les parcours Manager et Admin/RH sont actuellement des prototypes locaux ; leurs actions seront connectées au backend avec l'authentification.
+>>>>>>> f7e66514d42a420eacf40b4387aeb9989e4b2d78
 
 L'utilisateur peut :
 
@@ -11,7 +15,9 @@ L'utilisateur peut :
 - voir son chronomètre uniquement pendant une session active ;
 - consulter son quota et ses statistiques hebdomadaires ;
 - consulter ses dix derniers pointages en lecture seule.
+- consulter ses graphiques personnels.
 
+<<<<<<< HEAD
 Le profil **RH / Administration** est accessible depuis `Administration RH`. Il peut :
 
 - consulter les collaborateurs retournés par `GET /api/users` ;
@@ -24,6 +30,9 @@ Le profil **RH / Administration** est accessible depuis `Administration RH`. Il 
 Cette première vue RH réutilise `GET /api/workingtime/:userID` pour charger les pointages de chaque collaborateur. Les workflows de validation, de paie, de congés, de permissions et d'audit détaillé nécessiteront des endpoints dédiés avant d'être ajoutés à l'interface.
 
 La page de formulaire « Gestion du temps de travail » visible dans l'ancienne capture n'est donc plus accessible depuis l'application. Les anciennes URLs `/workingTime/...`, `/clock/...` et `/chartManager/...` sont redirigées vers `/user`.
+=======
+La page de formulaire « Gestion du temps de travail » visible dans l'ancienne capture n'est donc plus accessible depuis le parcours employé. Le pointage passe uniquement par `Clock In` et `Clock Out`.
+>>>>>>> f7e66514d42a420eacf40b4387aeb9989e4b2d78
 
 ## Fichiers principaux
 
@@ -38,7 +47,7 @@ C'est le layout global :
 - en-tête avec le nom `Joseph William` et le rôle `Utilisateur` ;
 - menu mobile et petit menu de profil.
 
-Il ne contient volontairement aucun onglet Manager/Admin ni lien vers une fonctionnalité non disponible.
+Il contient la navigation employé et le centre d'aide mobile. Les parcours Manager et Admin/RH ne sont pas présentés comme des permissions réelles tant que l'authentification backend n'est pas disponible.
 
 ### `frontend/src/components/User.vue`
 
@@ -64,7 +73,13 @@ Le bloc `.session-timer` est rendu avec `v-if="isClockedIn"`. Il disparaît donc
 
 ### `frontend/src/components/WorkingTimes.vue`
 
-Cette page est devenue une vue **lecture seule** de l'historique. Les boutons de création, modification et suppression ont été retirés. Le pointage se fait depuis le bouton du dashboard, pas depuis un formulaire manuel.
+Cette page est une vue **lecture seule** de l'historique. Les boutons de création, modification et suppression ne sont pas exposés au parcours employé. Le pointage se fait depuis le bouton du dashboard, pas depuis un formulaire manuel.
+
+### Parcours Manager et Admin/RH
+
+- `/manager-dashboard` affiche le suivi d'équipe et les validations en mode démonstration local.
+- `/admin-dashboard` prépare les écrans de droits, congés, paie et fatigue en mode démonstration local.
+- Ces vues ne constituent pas une protection d'accès : les permissions devront être imposées par le backend.
 
 ### `frontend/src/components/HR.vue`
 
@@ -72,14 +87,26 @@ C'est le tableau de bord RH / Administration. Il agrège les utilisateurs et leu
 
 ### `frontend/src/router/index.js`
 
+<<<<<<< HEAD
 Le router expose :
 
 - `/user` : dashboard ;
 - `/workingTimes/:userID` : historique en lecture seule ;
 - `/hr` : dashboard RH / Administration ;
 - toutes les autres URLs : redirection vers `/user`.
+=======
+Le router expose les parcours suivants :
 
-Les anciens écrans génériques `ClockManager.vue` et `ChartManager.vue` restent dans le dépôt pour ne pas supprimer le travail des autres personnes, mais ils ne sont plus accessibles dans cette navigation utilisateur. L'ancien composant de formulaire `WorkingTime.vue` a été supprimé du frontend utilisateur pour éviter sa réintroduction accidentelle.
+- `/user` : dashboard employé ;
+- `/workingTimes/:userID` : historique employé en lecture seule ;
+- `/clock/:userID` : pointage employé ;
+- `/chartManager/:userID` : graphiques personnels ;
+- `/manager-dashboard` : prototype manager ;
+- `/admin-dashboard` : prototype Admin/RH ;
+- les anciennes routes `/workingTime/...` de création manuelle redirigent vers `/user`.
+>>>>>>> f7e66514d42a420eacf40b4387aeb9989e4b2d78
+
+Les composants `ClockManager.vue`, `ChartManager.vue` et `WorkingTime.vue` restent séparés pour respecter l'architecture Vue. `WorkingTime.vue` n'est pas exposé dans le parcours employé : il pourra être réutilisé plus tard par un parcours manager/admin protégé.
 
 ### `frontend/src/services/api.js`
 

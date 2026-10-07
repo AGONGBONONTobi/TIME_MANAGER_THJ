@@ -13,54 +13,37 @@ env:
 
 stages:
   - name: test
-  - name: build & push images
-    if: branch = main
+  - name: build
+    if: type = push AND branch = main
   - name: deploy
-    if: branch = main
+    if: type = push AND branch = main
 
 jobs:
   include:
-    # ─── Test stage: backend ───────────────────────────────────
+    # ─── Test: backend ─────────────────────────────────────────
     - stage: test
       name: backend
-      language: minimal
+      language: elixir
+      elixir: '1.18'
+      otp_release: '27.2'
       services:
-        - docker
+        - postgresql
+      env:
+        - MIX_ENV=test
       script:
-        - docker run --rm
-            -v "$PWD/time_manager":/app
-            -w /app
-            -e MIX_ENV=test
-            -e SECRET_KEY_BASE=postgres
-            elixir:1.20-otp-27
-            bash -c "mix local.hex --force && mix local.rebar --force && mix deps.get && mix test"
-    # - stage: test
-    #   name: backend
-    #   language: elixir
-    #   elixir: '1.20'
-    #   otp_release: '27'
-    #   services:
-    #     - postgresql
-    #   env:
-    #     - MIX_ENV=test
-    #     - DATABASE_URL=ecto://postgres@localhost/time_manager_test
-    #     - SECRET_KEY_BASE=postgres
-    #   before_script:
-    #     - psql -c 'CREATE DATABASE time_manager_test;' -U postgres
-    #   script:
-    #     - cd time_manager
-    #     - mix local.hex --force
-    #     - mix local.rebar --force
-    #     - mix deps.get
-    #     - mix ecto.create --quiet || true
-    #     - mix ecto.migrate
-    #     - mix test
+        - cd time_manager
+        - mix local.hex --force
+        - mix local.rebar --force
+        - mix deps.get
+        - mix test
 
-    # ─── Test stage: frontend ──────────────────────────────────
+    # ─── Test: frontend ────────────────────────────────────────
     - stage: test
       name: frontend
       language: node_js
       node_js: '22'
+      env:
+        - CI=true
       script:
         - cd frontend
         - npm ci

@@ -23,19 +23,19 @@ jobs:
     # ─── Test: backend ─────────────────────────────────────────
     - stage: test
       name: backend
-      language: elixir
-      elixir: '1.14'
-      otp_release: '25.3'
+      language: minimal
       services:
-        - postgresql
-      env:
-        - MIX_ENV=test
+        - docker
       script:
-        - cd time_manager
-        - mix local.hex --force
-        - mix local.rebar --force
-        - mix deps.get
-        - mix test
+        - docker network create tm
+        - docker run -d --name pg --network tm -e POSTGRES_PASSWORD=postgres postgres:16
+        - until docker exec pg pg_isready -U postgres; do sleep 1; done
+        - |
+          docker run --rm --network tm \
+            -e MIX_ENV=test -e DB_HOST=pg \
+            -v "$PWD/time_manager":/app -w /app \
+            elixir:1.18 \
+            sh -c "mix local.hex --force && mix local.rebar --force && mix deps.get && mix test"
 
     # ─── Test: frontend ────────────────────────────────────────
     - stage: test

@@ -12,14 +12,17 @@ env:
     - DEPLOY_PATH=/home/tobiagongbonon/TIME_MANAGER_THJ
 
 stages:
+  - name: test
   - name: build & push images
+    if: branch = main
   - name: deploy
     if: branch = main
 
 jobs:
   include:
-    # Stage 0 — Run test suite
+    # ─── Test stage: backend ───────────────────────────────────
     - stage: test
+      name: backend
       language: elixir
       elixir: '1.20'
       otp_release: '27'
@@ -28,7 +31,7 @@ jobs:
       env:
         - MIX_ENV=test
         - DATABASE_URL=ecto://postgres@localhost/time_manager_test
-        - SECRET_KEY_BASE=postgres
+        - SECRET_KEY_BASE=ci_secret_key_base_padding_padding_padding_padding_padding_padding
       before_script:
         - psql -c 'CREATE DATABASE time_manager_test;' -U postgres
       script:
@@ -39,7 +42,18 @@ jobs:
         - mix ecto.create --quiet || true
         - mix ecto.migrate
         - mix test
-    # Stage 1 — Build & Push des 2 images
+
+    # ─── Test stage: frontend ──────────────────────────────────
+    - stage: test
+      name: frontend
+      language: node_js
+      node_js: '22'
+      script:
+        - cd frontend
+        - npm ci
+        - npm test
+
+    # ─── Build & push (main only) ──────────────────────────────
     - stage: build & push images
       script:
         - echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
@@ -52,7 +66,7 @@ jobs:
         - docker push $DOCKER_FRONT_IMAGE:$TRAVIS_COMMIT
         - docker push $DOCKER_FRONT_IMAGE:latest
 
-    # Stage 2 — Deploy
+    # ─── Deploy (main only) ────────────────────────────────────
     - stage: deploy
       before_script:
         - echo "$SSH_KEY_BASE64" | base64 -d > /tmp/deploy_key

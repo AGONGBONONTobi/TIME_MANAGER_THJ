@@ -44,6 +44,17 @@ defmodule TimeManagerWeb.Endpoint do
     pass: ["*/*"],
     json_decoder: Phoenix.json_library()
 
+  plug CORSPlug,
+    origin: [
+      "http://localhost",
+      "https://localhost",
+      "http://localhost:5173",
+      "http://35.192.87.173:4000"
+    ],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    headers: ["Content-Type", "Authorization", "X-XSRF-Token"]
+
   plug Plug.MethodOverride
   plug Plug.Head
   plug Plug.Session, @session_options

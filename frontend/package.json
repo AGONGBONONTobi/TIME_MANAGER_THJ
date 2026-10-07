@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:mobile": "npm run build && rm -rf ../mobile/www/* && cp -r dist/* ../mobile/www/",
+    "build:mobile": "vite build --mode mobile && rm -rf ../mobile/www/* && cp -r dist/* ../mobile/www/",
     "prepare:mobile": "npm run build:mobile",
     "test": "vitest run",
     "preview": "vite preview",

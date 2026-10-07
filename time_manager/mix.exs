@@ -15,7 +15,7 @@ defmodule TimeManager.MixProject do
           include_executables_for: [:unix],
           applications: [runtime_tools: :permanent]
         ]
-      ],
+      ]
     ]
   end
 
@@ -53,7 +53,8 @@ defmodule TimeManager.MixProject do
       {:dns_cluster, "~> 0.1.1"},
       {:bandit, "~> 1.5"},
       {:joken, "~> 2.6"},
-      {:bcrypt_elixir, "~> 3.0"}
+      {:bcrypt_elixir, "~> 3.0"},
+      {:cors_plug, "~> 3.0"}
     ]
   end
 
@@ -68,7 +69,7 @@ defmodule TimeManager.MixProject do
       setup: ["deps.get", "ecto.setup", "assets.setup", "assets.build"],
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
-      test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
+      test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"]
     ]
   end
 end

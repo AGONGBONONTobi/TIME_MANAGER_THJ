@@ -49,7 +49,8 @@ defmodule TimeManagerWeb.Endpoint do
       "http://localhost",
       "https://localhost",
       "http://localhost:5173",
-      "http://35.192.87.173:4000"
+      "http://35.192.87.173:4000",
+      "null"
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],

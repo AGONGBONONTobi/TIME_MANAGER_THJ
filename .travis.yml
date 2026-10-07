@@ -31,7 +31,7 @@ jobs:
       env:
         - MIX_ENV=test
         - DATABASE_URL=ecto://postgres@localhost/time_manager_test
-        - SECRET_KEY_BASE=ci_secret_key_base_padding_padding_padding_padding_padding_padding
+        - SECRET_KEY_BASE=postgres
       before_script:
         - psql -c 'CREATE DATABASE time_manager_test;' -U postgres
       script:

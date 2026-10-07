@@ -1,6 +1,8 @@
 <script>
 import api from './services/api'
 import { clearAuthUser, readAuthUser, writeAuthUser } from './utils/auth'
+import { initialiseNetworkMonitoring, isOnline } from './services/networkService'
+import { pendingEventCount, synchronisePendingEvents } from './services/syncService'
 
 export default {
   name: 'App',
@@ -11,7 +13,10 @@ export default {
       isHelpOpen: false,
       isDarkMode: localStorage.getItem('darkMode') === 'true',
       currentUser: readAuthUser(),
-      lastDashboard: 'dashboard'
+      lastDashboard: 'dashboard',
+      online: isOnline(),
+      pendingCount: 0,
+      stopNetworkMonitoring: null
     }
   },
   computed: {
@@ -101,6 +106,14 @@ export default {
         this.isProfileOpen = false
         this.isHelpOpen = false
       }
+    },
+    async refreshSyncState() {
+      this.pendingCount = await pendingEventCount()
+    },
+    handleNetwork(event) {
+      this.online = event.detail.online
+      if (this.online) synchronisePendingEvents()
+      this.refreshSyncState()
     }
   },
   mounted() {
@@ -109,11 +122,20 @@ export default {
       document.documentElement.classList.add('theme-dark');
     }
     this.refreshCurrentUser()
+    this.stopNetworkMonitoring = initialiseNetworkMonitoring()
+    window.addEventListener('time-manager-network', this.handleNetwork)
+    window.addEventListener('time-manager-sync', this.refreshSyncState)
+    this.refreshSyncState()
     if (this.$route.path === '/manager') this.lastDashboard = 'manager'
     else if (this.$route.path === '/admin') this.lastDashboard = 'admin'
     else if (this.$route.path === '/employee') this.lastDashboard = 'employee'
   },
-  beforeUnmount() { window.removeEventListener('keydown', this.handleEscape) }
+  beforeUnmount() {
+    window.removeEventListener('keydown', this.handleEscape)
+    window.removeEventListener('time-manager-network', this.handleNetwork)
+    window.removeEventListener('time-manager-sync', this.refreshSyncState)
+    this.stopNetworkMonitoring?.()
+  }
 }
 </script>
 
@@ -154,6 +176,16 @@ export default {
         </div>
       </header>
       <main id="main-content" class="app-content" tabindex="-1"><router-view /></main>
+      <nav v-if="isAuthenticated" class="mobile-tab-bar" aria-label="Navigation mobile">
+        <router-link :to="dashboardTarget" class="mobile-tab" :class="{ active: $route.path === '/employee' || $route.path === '/manager' || $route.path === '/admin' || $route.path === '/dashboard' }"><span aria-hidden="true">⌂</span><small>Accueil</small></router-link>
+        <router-link :to="{ name: 'clock', params: { userID: currentUserId } }" class="mobile-tab" :class="{ active: $route.name === 'clock' }"><span aria-hidden="true">◉</span><small>Pointer</small></router-link>
+        <router-link :to="{ name: 'workingTimes', params: { userID: currentUserId } }" class="mobile-tab" :class="{ active: $route.name === 'workingTimes' }"><span aria-hidden="true">◷</span><small>Historique</small></router-link>
+        <router-link :to="{ name: 'chartManager', params: { userID: currentUserId } }" class="mobile-tab" :class="{ active: $route.name === 'chartManager' }"><span aria-hidden="true">▥</span><small>Graphiques</small></router-link>
+        <button type="button" class="mobile-tab" @click="isProfileOpen = !isProfileOpen"><span aria-hidden="true">●</span><small>Profil</small></button>
+      </nav>
+      <div v-if="isAuthenticated" class="mobile-sync-status" :class="{ offline: !online }">
+        {{ online ? (pendingCount ? `${pendingCount} action${pendingCount > 1 ? 's' : ''} à synchroniser` : 'En ligne') : 'Hors ligne' }}
+      </div>
     </div>
     <div v-if="isHelpOpen" class="help-backdrop" @click.self="toggleHelp">
       <section class="help-dialog" role="dialog" aria-modal="true" aria-labelledby="help-title">
@@ -468,5 +500,57 @@ export default {
   .app-content > .timeline-page {
     width: 100% !important;
   }
+}
+.mobile-tab-bar,
+.mobile-sync-status { display: none; }
+@media (max-width: 700px) {
+  .app-content { padding-bottom: 92px; }
+  .mobile-tab-bar {
+    position: fixed;
+    z-index: 30;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+    background: rgba(255, 255, 255, .97);
+    border-top: 1px solid #e5e7eb;
+    box-shadow: 0 -8px 24px rgba(17, 24, 39, .08);
+    backdrop-filter: blur(12px);
+  }
+  .mobile-tab {
+    display: grid;
+    min-height: 48px;
+    place-items: center;
+    gap: 2px;
+    color: #718096;
+    font-size: 18px;
+    text-decoration: none;
+    border: 0;
+    background: transparent;
+  }
+  .mobile-tab small { font-size: 10px; font-weight: 700; }
+  .mobile-tab.active { color: #635bdb; }
+  .mobile-sync-status {
+    position: fixed;
+    z-index: 31;
+    right: 12px;
+    bottom: calc(76px + env(safe-area-inset-bottom));
+    display: block;
+    padding: 5px 9px;
+    color: #276749;
+    background: #f0fff4;
+    border: 1px solid #c6f6d5;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+  }
+  .mobile-sync-status.offline { color: #9b2c2c; background: #fff5f5; border-color: #fed7d7; }
+  .theme-dark .mobile-tab-bar { background: rgba(17, 17, 17, .97); border-top-color: rgba(255,255,255,.12); }
+  .theme-dark .mobile-tab { color: rgba(255,255,255,.55); }
+  .theme-dark .mobile-tab.active { color: #c4b5fd; }
+  .theme-dark .mobile-sync-status { color: #9ae6b4; background: #153e2a; border-color: #276749; }
+  .theme-dark .mobile-sync-status.offline { color: #feb2b2; background: #4a1f1f; border-color: #822727; }
 }
 </style>

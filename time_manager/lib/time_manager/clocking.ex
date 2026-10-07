@@ -24,29 +24,69 @@ defmodule TimeManager.Clocking do
     |> Repo.one()
   end
 
-  def create_clock(user_id) do
+  def create_clock(user_id, attrs \\ %{}) do
     case Repo.get(User, user_id) do
       nil ->
         {:error, :user_not_found}
 
       user ->
-        time = DateTime.utc_now() |> DateTime.truncate(:second)
-        status = user_id |> get_last_clock() |> determine_status()
+        client_event_id = attrs["client_event_id"] || attrs[:client_event_id]
 
-        Ecto.Multi.new()
-        |> Ecto.Multi.insert(
-          :clock,
-          Clock.changeset(%Clock{}, %{user_id: user.id, time: time, status: status})
-        )
-        |> Ecto.Multi.run(:working_time, fn repo, _changes ->
-          sync_working_time(repo, user.id, status, time)
-        end)
-        |> Repo.transaction()
-        |> case do
-          {:ok, %{clock: clock}} -> {:ok, clock}
-          {:error, _step, reason, _changes} -> {:error, reason}
+        case find_existing_client_event(client_event_id, user.id) do
+          %Clock{} = clock -> {:ok, clock}
+          nil -> create_clock_for_user(user, attrs)
         end
     end
+  end
+
+  defp create_clock_for_user(user, attrs) do
+    time = parse_event_time(attrs["occurred_at"] || attrs[:occurred_at])
+    status = determine_requested_status(attrs["event_type"] || attrs[:event_type], user.id)
+    client_event_id = attrs["client_event_id"] || attrs[:client_event_id]
+
+    Ecto.Multi.new()
+    |> Ecto.Multi.insert(
+      :clock,
+      Clock.changeset(%Clock{}, %{
+        user_id: user.id,
+        time: time,
+        status: status,
+        client_event_id: client_event_id,
+        source: if(client_event_id, do: "mobile", else: "web"),
+        received_at: DateTime.utc_now() |> DateTime.truncate(:second)
+      })
+    )
+    |> Ecto.Multi.run(:working_time, fn repo, _changes ->
+      sync_working_time(repo, user.id, status, time)
+    end)
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{clock: clock}} -> {:ok, clock}
+      {:error, _step, reason, _changes} -> {:error, reason}
+    end
+  end
+
+  defp parse_event_time(nil), do: DateTime.utc_now() |> DateTime.truncate(:second)
+
+  defp parse_event_time(value) when is_binary(value) do
+    case DateTime.from_iso8601(value) do
+      {:ok, datetime, _offset} -> DateTime.truncate(datetime, :second)
+      _ -> DateTime.utc_now() |> DateTime.truncate(:second)
+    end
+  end
+
+  defp determine_requested_status("clock_in", _user_id), do: true
+  defp determine_requested_status("clock_out", _user_id), do: false
+
+  defp determine_requested_status(_, user_id),
+    do: user_id |> get_last_clock() |> determine_status()
+
+  defp find_existing_client_event(nil, _user_id), do: nil
+
+  defp find_existing_client_event(client_event_id, user_id) do
+    Clock
+    |> where([c], c.client_event_id == ^client_event_id and c.user_id == ^user_id)
+    |> Repo.one()
   end
 
   # CLOCK IN : crée un workingtime si pas déjà en cours

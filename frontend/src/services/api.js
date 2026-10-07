@@ -58,7 +58,7 @@ api.rejectLeaveRequest = (id) => api.post(`/leave-requests/${id}/reject`)
 api.getPayrollRules = () => api.get('/payroll-rules')
 api.getWorkPolicies = () => api.get('/work-policies')
 api.getClocks = (userID) => api.get(`/users/${userID}/clocks`)
-api.clockInOut = (userID) => api.post(`/users/${userID}/clocks`)
+api.clockInOut = (userID, payload = {}) => api.post(`/users/${userID}/clocks`, payload)
 api.getWorkingTimes = (userID, start, end) => api.get(`/users/${userID}/working-times`, {
   params: { start, end }
 })

@@ -32,4 +32,20 @@ defmodule TimeManager.ClockingTest do
   test "an unknown user cannot create a clock" do
     assert {:error, :user_not_found} = Clocking.create_clock(999_999)
   end
+
+  test "mobile events preserve their occurrence time and are idempotent" do
+    {:ok, user} = Accounts.create_user(%{username: "mobile-user", email: "mobile@example.com"})
+
+    attrs = %{
+      "client_event_id" => "mobile-event-1",
+      "event_type" => "clock_in",
+      "occurred_at" => "2026-10-07T08:00:00Z"
+    }
+
+    assert {:ok, clock} = Clocking.create_clock(user.id, attrs)
+    assert clock.time == ~U[2026-10-07 08:00:00Z]
+    assert {:ok, duplicate} = Clocking.create_clock(user.id, attrs)
+    assert duplicate.id == clock.id
+    assert length(Clocking.list_clocks(user.id)) == 1
+  end
 end

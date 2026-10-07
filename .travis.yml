@@ -23,25 +23,38 @@ jobs:
     # ─── Test stage: backend ───────────────────────────────────
     - stage: test
       name: backend
-      language: elixir
-      elixir: '1.20'
-      otp_release: '27'
+      language: minimal
       services:
-        - postgresql
-      env:
-        - MIX_ENV=test
-        - DATABASE_URL=ecto://postgres@localhost/time_manager_test
-        - SECRET_KEY_BASE=postgres
-      before_script:
-        - psql -c 'CREATE DATABASE time_manager_test;' -U postgres
+        - docker
       script:
-        - cd time_manager
-        - mix local.hex --force
-        - mix local.rebar --force
-        - mix deps.get
-        - mix ecto.create --quiet || true
-        - mix ecto.migrate
-        - mix test
+        - docker run --rm
+            -v "$PWD/time_manager":/app
+            -w /app
+            -e MIX_ENV=test
+            -e SECRET_KEY_BASE=ci_secret_key_base_padding_padding_padding_padding_padding_padding
+            elixir:1.20-otp-27
+            bash -c "mix local.hex --force && mix local.rebar --force && mix deps.get && mix test"
+    # - stage: test
+    #   name: backend
+    #   language: elixir
+    #   elixir: '1.20'
+    #   otp_release: '27'
+    #   services:
+    #     - postgresql
+    #   env:
+    #     - MIX_ENV=test
+    #     - DATABASE_URL=ecto://postgres@localhost/time_manager_test
+    #     - SECRET_KEY_BASE=postgres
+    #   before_script:
+    #     - psql -c 'CREATE DATABASE time_manager_test;' -U postgres
+    #   script:
+    #     - cd time_manager
+    #     - mix local.hex --force
+    #     - mix local.rebar --force
+    #     - mix deps.get
+    #     - mix ecto.create --quiet || true
+    #     - mix ecto.migrate
+    #     - mix test
 
     # ─── Test stage: frontend ──────────────────────────────────
     - stage: test

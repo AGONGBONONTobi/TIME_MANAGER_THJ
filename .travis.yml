@@ -24,8 +24,8 @@ jobs:
     - stage: test
       name: backend
       language: elixir
-      elixir: '1.18'
-      otp_release: '27.2'
+      elixir: '1.14'
+      otp_release: '25.3'
       services:
         - postgresql
       env:

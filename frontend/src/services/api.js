@@ -29,8 +29,8 @@ api.interceptors.response.use(
   (error) => {
     if (error?.response?.status === 401) {
       clearAuthUser()
-      if (window.location.pathname !== '/sign_in') {
-        window.location.href = '/sign_in'
+      if (window.location.hash !== '#/sign_in') {
+        window.location.hash = '#/sign_in'
       }
     }
 

@@ -25,6 +25,10 @@
     <preference name="SplashScreenDelay" value="2000" />
     <preference name="AndroidPersistentFileLocation" value="Compatibility" />
 
+    <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application" xmlns:android="http://schemas.android.com/apk/res/android">
+        <application android:usesCleartextTraffic="true" />
+    </edit-config>
+
     <plugin name="cordova-plugin-network-information" spec="^3.0.0" />
     <plugin name="cordova-sqlite-storage" spec="^7.0.0" />
     <plugin name="cordova-plugin-vibration" spec="^3.1.1" />

@@ -1,6 +1,6 @@
 <script>
 import api from '../services/api'
-import { writeAuthUser } from '../utils/auth'
+import { writeAuthToken, writeAuthUser } from '../utils/auth'
 import AuthShell from './AuthShell.vue'
 
 export default {
@@ -38,6 +38,7 @@ export default {
           throw new Error('Réponse de connexion incomplète.')
         }
 
+        writeAuthToken(response.data?.token)
         writeAuthUser({
           id: user.id,
           username: user.username || user.email || 'Utilisateur',

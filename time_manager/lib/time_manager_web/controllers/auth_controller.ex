@@ -28,11 +28,12 @@ defmodule TimeManagerWeb.AuthController do
       {:ok, user} ->
         csrf_token = generate_csrf_token()
 
-        {:ok, jwt, _claims} = TimeManager.Token.generate_and_sign(%{
-          "user_id" => user.id,
-          "role" => user.role,
-          "csrf_token" => csrf_token
-        })
+        {:ok, jwt, _claims} =
+          TimeManager.Token.generate_and_sign(%{
+            "user_id" => user.id,
+            "role" => user.role,
+            "csrf_token" => csrf_token
+          })
 
         conn
         |> put_resp_cookie("auth_token", jwt,
@@ -48,7 +49,7 @@ defmodule TimeManagerWeb.AuthController do
           path: "/"
         )
         |> put_status(:ok)
-        |> json(%{user: public_user(user)})
+        |> json(%{user: public_user(user), token: jwt})
 
       {:error, :invalid_credentials} ->
         conn

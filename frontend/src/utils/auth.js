@@ -1,4 +1,5 @@
 export const AUTH_STORAGE_KEY = 'time_manager_user'
+export const AUTH_TOKEN_STORAGE_KEY = 'time_manager_token'
 
 export function readAuthUser() {
   if (typeof window === 'undefined') {
@@ -43,9 +44,26 @@ export function writeAuthUser(user) {
   return payload
 }
 
+export function writeAuthToken(token) {
+  if (typeof window !== 'undefined' && token) {
+    window.localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token)
+  }
+
+  return token || ''
+}
+
+export function getAuthToken() {
+  if (typeof window === 'undefined') {
+    return ''
+  }
+
+  return window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) || ''
+}
+
 export function clearAuthUser() {
   if (typeof window !== 'undefined') {
     window.localStorage.removeItem(AUTH_STORAGE_KEY)
+    window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY)
   }
 }
 

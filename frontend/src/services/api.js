@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { clearAuthUser, getCsrfToken } from '../utils/auth'
+import { clearAuthUser, getAuthToken, getCsrfToken } from '../utils/auth'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
@@ -14,6 +14,11 @@ api.interceptors.request.use((config) => {
 
   if (csrfToken && config.headers) {
     config.headers['x-xsrf-token'] = csrfToken
+  }
+
+  const authToken = getAuthToken()
+  if (authToken && config.headers) {
+    config.headers.Authorization = `Bearer ${authToken}`
   }
 
   return config

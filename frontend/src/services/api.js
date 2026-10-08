@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { clearAuthUser, getCsrfToken } from '../utils/auth'
+import { clearAuthUser, getAuthToken, getCsrfToken } from '../utils/auth'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
@@ -9,11 +9,16 @@ const api = axios.create({
   }
 })
 
-api.interceptors.request.use((config) => {
+api.interceptors.request.use(async (config) => {
   const csrfToken = getCsrfToken()
 
   if (csrfToken && config.headers) {
     config.headers['x-xsrf-token'] = csrfToken
+  }
+
+  const authToken = await getAuthToken()
+  if (authToken && config.headers) {
+    config.headers.Authorization = `Bearer ${authToken}`
   }
 
   return config
@@ -24,8 +29,8 @@ api.interceptors.response.use(
   (error) => {
     if (error?.response?.status === 401) {
       clearAuthUser()
-      if (window.location.pathname !== '/sign_in') {
-        window.location.href = '/sign_in'
+      if (window.location.hash !== '#/sign_in') {
+        window.location.hash = '#/sign_in'
       }
     }
 
@@ -58,7 +63,7 @@ api.rejectLeaveRequest = (id) => api.post(`/leave-requests/${id}/reject`)
 api.getPayrollRules = () => api.get('/payroll-rules')
 api.getWorkPolicies = () => api.get('/work-policies')
 api.getClocks = (userID) => api.get(`/users/${userID}/clocks`)
-api.clockInOut = (userID) => api.post(`/users/${userID}/clocks`)
+api.clockInOut = (userID, payload = {}) => api.post(`/users/${userID}/clocks`, payload)
 api.getWorkingTimes = (userID, start, end) => api.get(`/users/${userID}/working-times`, {
   params: { start, end }
 })

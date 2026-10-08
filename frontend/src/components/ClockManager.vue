@@ -1,6 +1,9 @@
 <script>
 import api from '../services/api'
 import { readAuthUser } from '../utils/auth'
+import { queueClockEvent, synchronisePendingEvents } from '../services/syncService'
+import { isOnline } from '../services/networkService'
+import { vibrateSuccess } from '../services/nativeFeatures'
 
 export default {
   name: 'ClockManager',
@@ -21,11 +24,28 @@ export default {
         status: true,
         reason: ''
       },
-      correctionMessage: ''
+      correctionMessage: '',
+      isOnline: isOnline(),
+      pendingSync: false,
+      removeNetworkListener: null
     }
   },
-  mounted() { this.loadUserName(); this.refresh() },
+  mounted() {
+    this.loadUserName()
+    this.refresh()
+    this.removeNetworkListener = () => {
+      window.removeEventListener('time-manager-network', this.onNetworkChange)
+      window.removeEventListener('time-manager-sync', this.refresh)
+    }
+    window.addEventListener('time-manager-network', this.onNetworkChange)
+    window.addEventListener('time-manager-sync', this.refresh)
+  },
+  beforeUnmount() { this.removeNetworkListener?.() },
   methods: {
+    onNetworkChange(event) {
+      this.isOnline = event.detail.online
+      if (this.isOnline) synchronisePendingEvents()
+    },
     async loadUserName() {
       try {
         const response = await api.getUser(this.userID)
@@ -54,7 +74,17 @@ export default {
       this.errorMessage = ''
       this.correctionMessage = ''
       try {
-        await api.clockInOut(this.userID)
+        const eventType = this.clockIn ? 'clock_out' : 'clock_in'
+        const occurredAt = new Date().toISOString()
+        if (!this.isOnline) {
+          await queueClockEvent({ userId: this.userID, eventType, occurredAt })
+          this.clockIn = eventType === 'clock_in'
+          this.startDateTime = this.clockIn ? occurredAt : null
+          this.errorMessage = 'Pointage enregistré hors ligne. Il sera synchronisé automatiquement.'
+          return
+        }
+        await api.clockInOut(this.userID, { event_type: eventType, occurred_at: occurredAt })
+        vibrateSuccess()
         await this.refresh()
       } catch (error) {
         this.errorMessage = error.response?.data?.error === 'already clocked in'
@@ -108,6 +138,7 @@ export default {
       <strong class="status" :class="{ active: clockIn }"><i></i>{{ clockIn ? 'En cours' : 'Au repos' }}</strong>
       <p v-if="clockIn">Session commencée le {{ formatDateTime(startDateTime) }}</p>
       <p v-else>Aucune période de travail en cours.</p>
+      <p class="network-status" :class="{ offline: !isOnline }">{{ isOnline ? 'En ligne' : 'Hors ligne' }}</p>
       <p v-if="errorMessage" class="error" role="alert">{{ errorMessage }}</p>
       <p v-if="correctionMessage" class="success" role="alert">{{ correctionMessage }}</p>
       <div class="actions">
@@ -150,6 +181,6 @@ export default {
 .form-group { margin-bottom: 1rem; display: flex; flex-direction: column; gap: 4px; }
 .form-group label { font-size: .75rem; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
 .form-group input, .form-group select, .form-group textarea { padding: .5rem; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: .85rem; }
-
+.network-status { width: fit-content; padding: 4px 8px; color: #276749 !important; background: #f0fff4; border-radius: 999px; font-size: .7rem !important; font-weight: 800; }.network-status.offline { color: #9b2c2c !important; background: #fff5f5; }
 @media (max-width: 680px) { .clock-page { width: min(100% - 1rem, 760px); margin-top: 3rem; }.clock-header { display: block; }.back-link { display: inline-block; margin-top: 1.5rem; } }
 </style>

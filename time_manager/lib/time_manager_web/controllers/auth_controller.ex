@@ -53,7 +53,7 @@ defmodule TimeManagerWeb.AuthController do
             path: "/"
           )
           |> put_status(:ok)
-          |> json(%{user: public_user(user)})
+          |> json(%{user: public_user(user), token: jwt})
         end
 
       {:error, :invalid_credentials} ->

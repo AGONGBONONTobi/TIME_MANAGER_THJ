@@ -32,7 +32,8 @@ defmodule TimeManagerWeb.UserControllerTest do
       users = json_response(conn, 200)["data"]
 
       assert Enum.any?(users, fn item ->
-               item["id"] == user.id and item["email"] == user.email and item["username"] == user.username
+               item["id"] == user.id and item["email"] == user.email and
+                 item["username"] == user.username
              end)
     end
   end
@@ -127,11 +128,11 @@ defmodule TimeManagerWeb.UserControllerTest do
     assert json_response(conn, 403)["error"] == "Invalid CSRF token"
   end
 
-  defp auth_conn(conn, %User{} = user) do
-    conn
-    |> Plug.Test.init_test_session(%{user_id: user.id, csrf_token: "test-token"})
-    |> put_req_header("x-xsrf-token", "test-token")
-  end
+  # defp auth_conn(conn, %User{} = user) do
+  #   conn
+  #   |> Plug.Test.init_test_session(%{user_id: user.id, csrf_token: "test-token"})
+  #   |> put_req_header("x-xsrf-token", "test-token")
+  # end
 
   defp create_user(_) do
     user = user_fixture()

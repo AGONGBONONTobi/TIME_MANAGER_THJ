@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:mobile": "vite build --mode mobile && rm -rf ../mobile/www/* && cp -r dist/* ../mobile/www/",
+    "prepare:mobile": "npm run build:mobile",
     "test": "vitest run",
     "preview": "vite preview",
     "lint": "run-s \"lint:*\"",

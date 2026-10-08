@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory } from 'vue-router'
 import User from '../components/User.vue'
 import WorkingTimes from '../components/WorkingTimes.vue'
 import ClockManager from '../components/ClockManager.vue'
@@ -101,7 +101,7 @@ const routes = [
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHashHistory(),
   routes
 })
 

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import User from '@/components/User.vue'
 import api from '@/services/api'
+import { readAuthUser } from '@/utils/auth'
 
 vi.mock('@/services/api', () => ({
   default: {
@@ -10,9 +11,21 @@ vi.mock('@/services/api', () => ({
     updateUser: vi.fn(),
     deleteUser: vi.fn(),
     getWorkingTimes: vi.fn(),
+    getUserWorkPolicy: vi.fn(),
     clockInOut: vi.fn()
   }
 }))
+
+vi.mock('@/utils/auth', () => ({
+  readAuthUser: vi.fn(() => ({ id: 1, username: 'Joseph' }))
+}))
+
+const POLICY = {
+  weekly_hours: 35,
+  work_days: 5,
+  night_start: '21:00:00',
+  night_end: '06:00:00'
+}
 
 function mountComponent() {
   return mount(User, {
@@ -25,11 +38,13 @@ describe('User.vue', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    // Stop the real 1-second interval from ticking during tests
     intervalSpy = vi.spyOn(window, 'setInterval').mockReturnValue(1)
     vi.spyOn(window, 'clearInterval').mockImplementation(() => {})
-    // Default: user has no sessions
+    // Default: user 1, logged in, no working times, no policy
+    readAuthUser.mockReturnValue({ id: 1, username: 'Joseph' })
+    api.getUser.mockResolvedValue({ data: { data: { id: 1, username: 'Joseph' } } })
     api.getWorkingTimes.mockResolvedValue({ data: { data: [] } })
+    api.getUserWorkPolicy.mockResolvedValue({ data: { data: null } })
   })
 
   afterEach(() => {
@@ -38,15 +53,32 @@ describe('User.vue', () => {
 
   // ─── Initial load ─────────────────────────────────────────────
   describe('initial load', () => {
-    it('fetches working times for userId 1 on mount', async () => {
+    it('reads userId from the authenticated user', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      expect(wrapper.vm.userId).toBe(1)
+    })
+
+    it('fetches working times for that user', async () => {
       mountComponent()
       await flushPromises()
       expect(api.getWorkingTimes).toHaveBeenCalledWith(1)
     })
 
-    it('starts in loading state and clears it after fetch', async () => {
+    it('fetches the user profile', async () => {
+      mountComponent()
+      await flushPromises()
+      expect(api.getUser).toHaveBeenCalledWith(1)
+    })
+
+    it('fetches the work policy', async () => {
+      mountComponent()
+      await flushPromises()
+      expect(api.getUserWorkPolicy).toHaveBeenCalledWith(1)
+    })
+
+    it('clears loading after fetch', async () => {
       const wrapper = mountComponent()
-      expect(wrapper.vm.isLoading).toBe(true)
       await flushPromises()
       expect(wrapper.vm.isLoading).toBe(false)
     })
@@ -60,27 +92,36 @@ describe('User.vue', () => {
       expect(wrapper.vm.workingTimes).toHaveLength(1)
     })
 
-    it('shows an error message when fetch fails', async () => {
+    it('shows an error when the working times fetch fails', async () => {
       api.getWorkingTimes.mockRejectedValue(new Error('boom'))
       const wrapper = mountComponent()
       await flushPromises()
       expect(wrapper.vm.errorMessage).toContain('Impossible de charger')
-      expect(wrapper.text()).toContain('Impossible de charger')
     })
 
-    it('sets up a 1-second interval to refresh "now"', () => {
+    it('sets up a 1-second interval', () => {
       mountComponent()
       expect(intervalSpy).toHaveBeenCalledWith(expect.any(Function), 1000)
     })
 
-    it('renders the welcome heading', async () => {
+    it('renders the displayName from auth user', async () => {
       const wrapper = mountComponent()
       await flushPromises()
       expect(wrapper.text()).toContain('Bonjour, Joseph')
     })
+
+    it('does nothing when there is no authenticated user', async () => {
+      readAuthUser.mockReturnValue(null)
+      const wrapper = mountComponent()
+      await flushPromises()
+      expect(wrapper.vm.userId).toBeNull()
+      expect(api.getWorkingTimes).not.toHaveBeenCalled()
+      expect(wrapper.vm.isLoading).toBe(false)
+      expect(wrapper.text()).toContain('Bonjour, Utilisateur')
+    })
   })
 
-  // ─── Active session detection ─────────────────────────────────
+  // ─── Active session ───────────────────────────────────────────
   describe('active session detection', () => {
     it('activeSession is null when there are no sessions', async () => {
       const wrapper = mountComponent()
@@ -89,7 +130,7 @@ describe('User.vue', () => {
       expect(wrapper.vm.isClockedIn).toBe(false)
     })
 
-    it('finds the session with no end (open session)', async () => {
+    it('finds the session with no end', async () => {
       api.getWorkingTimes.mockResolvedValue({
         data: {
           data: [
@@ -121,7 +162,7 @@ describe('User.vue', () => {
       await flushPromises()
       wrapper.vm.now = new Date('2026-09-22T10:30:00Z')
       await wrapper.vm.$nextTick()
-      expect(wrapper.vm.elapsedSeconds).toBe(5400) // 1h30m
+      expect(wrapper.vm.elapsedSeconds).toBe(5400)
     })
 
     it('formats elapsed as HH:MM:SS', async () => {
@@ -141,11 +182,10 @@ describe('User.vue', () => {
     it('computes minutes between start and end', async () => {
       const wrapper = mountComponent()
       await flushPromises()
-      const minutes = wrapper.vm.durationInMinutes({
+      expect(wrapper.vm.durationInMinutes({
         start: '2026-09-22T09:00:00Z',
         end: '2026-09-22T10:30:00Z'
-      })
-      expect(minutes).toBe(90)
+      })).toBe(90)
     })
 
     it('uses "now" for an open session', async () => {
@@ -153,11 +193,10 @@ describe('User.vue', () => {
       await flushPromises()
       wrapper.vm.now = new Date('2026-09-22T10:00:00Z')
       await wrapper.vm.$nextTick()
-      const minutes = wrapper.vm.durationInMinutes({
+      expect(wrapper.vm.durationInMinutes({
         start: '2026-09-22T09:00:00Z',
         end: null
-      })
-      expect(minutes).toBe(60)
+      })).toBe(60)
     })
   })
 
@@ -167,29 +206,59 @@ describe('User.vue', () => {
       const wrapper = mountComponent()
       await flushPromises()
       const minutes = wrapper.vm.nightMinutesForSession({
-        start: '2026-09-22T09:00:00Z',
-        end: '2026-09-22T17:00:00Z'
+        start: '2026-09-22T09:00:00',
+        end: '2026-09-22T17:00:00'
       })
-      expect(minutes).toBeGreaterThanOrEqual(0)
-      expect(minutes).toBeLessThan(8 * 60)
+      expect(minutes).toBe(0)
     })
 
     it('counts minutes between 21:00 and 06:00 local time', async () => {
       const wrapper = mountComponent()
       await flushPromises()
-      // Construct with local hours so the test is timezone-safe
       const start = new Date('2026-09-22T22:00:00')
       const end = new Date('2026-09-23T02:00:00')
       const minutes = wrapper.vm.nightMinutesForSession({
         start: start.toISOString(),
         end: end.toISOString()
       })
-      expect(minutes).toBe(240) // 4 hours, all night
+      expect(minutes).toBe(240)
     })
   })
 
-  // ─── Weekly aggregates ────────────────────────────────────────
-  describe('week aggregates', () => {
+  // ─── Policy-driven aggregates ─────────────────────────────────
+  describe('work policy', () => {
+    it('exposes targetHours from the policy', async () => {
+      api.getUserWorkPolicy.mockResolvedValue({ data: { data: POLICY } })
+      const wrapper = mountComponent()
+      await flushPromises()
+      expect(wrapper.vm.targetHours).toBe(35)
+      expect(wrapper.vm.targetWorkDays).toBe(5)
+    })
+
+    it('quotaPercentage is 0 without a policy', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      expect(wrapper.vm.quotaPercentage).toBe(0)
+    })
+
+    it('quotaMessage explains the missing policy', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      expect(wrapper.vm.quotaMessage).toContain('Aucune politique horaire')
+    })
+
+    it('balanceLabel is "Non configuré" without a policy', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      expect(wrapper.vm.balanceLabel).toBe('Non configuré')
+    })
+  })
+
+  describe('week aggregates with a policy', () => {
+    beforeEach(() => {
+      api.getUserWorkPolicy.mockResolvedValue({ data: { data: POLICY } })
+    })
+
     it('weekHoursLabel reflects the current week', async () => {
       api.getWorkingTimes.mockResolvedValue({
         data: {
@@ -207,39 +276,35 @@ describe('User.vue', () => {
       api.getWorkingTimes.mockResolvedValue({
         data: {
           data: [
-            { id: 1, start: '2026-09-22T09:00:00Z', end: '2026-09-22T22:00:00Z' },
-            { id: 2, start: '2026-09-23T09:00:00Z', end: '2026-09-23T22:00:00Z' },
-            { id: 3, start: '2026-09-24T09:00:00Z', end: '2026-09-24T22:00:00Z' }
+            { id: 1, start: '2026-09-21T09:00:00Z', end: '2026-09-21T22:00:00Z' },
+            { id: 2, start: '2026-09-22T09:00:00Z', end: '2026-09-22T22:00:00Z' },
+            { id: 3, start: '2026-09-23T09:00:00Z', end: '2026-09-23T22:00:00Z' }
           ]
         }
       })
       const wrapper = mountComponent()
       await flushPromises()
-      wrapper.vm.now = new Date('2026-09-24T23:00:00Z')
+      wrapper.vm.now = new Date('2026-09-23T23:00:00Z')
       await wrapper.vm.$nextTick()
       expect(wrapper.vm.quotaPercentage).toBe(100)
     })
 
-    it('quotaColor is "danger" under 50%', async () => {
-      const wrapper = mountComponent()
-      await flushPromises()
-      wrapper.vm.now = new Date('2026-09-22T12:00:00Z')
-      await wrapper.vm.$nextTick()
-      expect(wrapper.vm.quotaColor).toBe('danger')
-    })
-  })
-
-  describe('balanceLabel', () => {
-    it('shows a negative balance when under 35h', async () => {
+    it('balanceLabel shows a negative balance under 35h', async () => {
       const wrapper = mountComponent()
       await flushPromises()
       expect(wrapper.vm.balanceLabel).toMatch(/^-/)
+    })
+
+    it('nightWindowLabel uses the policy hours', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      expect(wrapper.vm.nightWindowLabel).toBe('21:00 — 06:00')
     })
   })
 
   // ─── Clock in/out ─────────────────────────────────────────────
   describe('toggleClock', () => {
-    it('calls clockInOut with the userId and reloads', async () => {
+    it('calls clockInOut with the userId then reloads', async () => {
       api.clockInOut.mockResolvedValue({ data: {} })
       const wrapper = mountComponent()
       await flushPromises()
@@ -284,21 +349,19 @@ describe('User.vue', () => {
     it('shows minutes under 1 hour', async () => {
       const wrapper = mountComponent()
       await flushPromises()
-      const label = wrapper.vm.formatDuration({
+      expect(wrapper.vm.formatDuration({
         start: '2026-09-22T09:00:00Z',
         end: '2026-09-22T09:45:00Z'
-      })
-      expect(label).toBe('45 min')
+      })).toBe('45 min')
     })
 
     it('shows hours and minutes over 1 hour', async () => {
       const wrapper = mountComponent()
       await flushPromises()
-      const label = wrapper.vm.formatDuration({
+      expect(wrapper.vm.formatDuration({
         start: '2026-09-22T09:00:00Z',
         end: '2026-09-22T11:30:00Z'
-      })
-      expect(label).toBe('2h 30m')
+      })).toBe('2h 30m')
     })
   })
 

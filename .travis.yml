@@ -8,38 +8,48 @@ env:
     - DOCKER_API_IMAGE=$DOCKER_USER/time-manager-api
     - DOCKER_FRONT_IMAGE=$DOCKER_USER/time-manager-front
     - VM_USER=tobiagongbonon
-    - VM_IP=34.63.107.228
+    - VM_IP=35.192.87.173
     - DEPLOY_PATH=/home/tobiagongbonon/TIME_MANAGER_THJ
 
 stages:
-  - name: build & push images
+  - name: test
+  - name: build
+    if: type = push AND branch = main
   - name: deploy
-    if: branch = main
+    if: type = push AND branch = main
 
 jobs:
   include:
-    # Stage 0 — Run test suite
+    # ─── Test: backend ─────────────────────────────────────────
     - stage: test
-      language: elixir
-      elixir: '1.20'
-      otp_release: '27'
+      name: backend
+      language: minimal
       services:
-        - postgresql
-      env:
-        - MIX_ENV=test
-        - DATABASE_URL=ecto://postgres@localhost/time_manager_test
-        - SECRET_KEY_BASE=postges
-      before_script:
-        - psql -c 'CREATE DATABASE time_manager_test;' -U postgres
+        - docker
       script:
-        - cd time_manager
-        - mix local.hex --force
-        - mix local.rebar --force
-        - mix deps.get
-        - mix ecto.create --quiet || true
-        - mix ecto.migrate
-        - mix test
-    # Stage 1 — Build & Push des 2 images
+        - docker network create tm
+        - docker run -d --name pg --network tm -e POSTGRES_PASSWORD=postgres postgres:16
+        - until docker exec pg pg_isready -U postgres; do sleep 1; done
+        - |
+          docker run --rm --network tm \
+            -e MIX_ENV=test -e DB_HOST=pg \
+            -v "$PWD/time_manager":/app -w /app \
+            elixir:1.18 \
+            sh -c "mix local.hex --force && mix local.rebar --force && mix deps.get && mix test"
+
+    # ─── Test: frontend ────────────────────────────────────────
+    - stage: test
+      name: frontend
+      language: node_js
+      node_js: '22'
+      env:
+        - CI=true
+      script:
+        - cd frontend
+        - npm ci
+        - npm test
+
+    # ─── Build & push (main only) ──────────────────────────────
     - stage: build & push images
       script:
         - echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
@@ -52,7 +62,7 @@ jobs:
         - docker push $DOCKER_FRONT_IMAGE:$TRAVIS_COMMIT
         - docker push $DOCKER_FRONT_IMAGE:latest
 
-    # Stage 2 — Deploy
+    # ─── Deploy (main only) ────────────────────────────────────
     - stage: deploy
       before_script:
         - echo "$SSH_KEY_BASE64" | base64 -d > /tmp/deploy_key

@@ -6,12 +6,13 @@ defmodule TimeManagerWeb.ClockController do
 
   action_fallback TimeManagerWeb.FallbackController
 
-  operation :index,
+  operation(:index,
     summary: "List clocks for a user",
     parameters: [userID: [in: :path, required: true, type: :string]],
     responses: [ok: "Clocks returned"]
+  )
 
-  operation :create,
+  operation(:create,
     summary: "Clock in or out for a user",
     parameters: [userID: [in: :path, required: true, type: :string]],
     responses: [
@@ -20,6 +21,7 @@ defmodule TimeManagerWeb.ClockController do
       conflict: "User is already clocked in",
       unprocessable_entity: "User is not clocked in"
     ]
+  )
 
   @doc """
   GET /api/clocks/:userID
@@ -34,8 +36,8 @@ defmodule TimeManagerWeb.ClockController do
   POST /api/clocks/:userID
   Crée un nouveau clock (arrivée ou départ) pour l'utilisateur.
   """
-  def create(conn, %{"userID" => user_id}) do
-    case Clocking.create_clock(user_id) do
+  def create(conn, %{"userID" => user_id} = params) do
+    case Clocking.create_clock(user_id, params) do
       {:ok, clock} ->
         conn
         |> put_status(:created)
@@ -50,6 +52,15 @@ defmodule TimeManagerWeb.ClockController do
 
       {:error, :not_clocked_in} ->
         conn |> put_status(:unprocessable_entity) |> json(%{error: "not clocked in"})
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{error: "invalid clock event", details: translate_errors(changeset)})
     end
+  end
+
+  defp translate_errors(changeset) do
+    Ecto.Changeset.traverse_errors(changeset, fn {message, _opts} -> message end)
   end
 end

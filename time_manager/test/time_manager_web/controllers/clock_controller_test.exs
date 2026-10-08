@@ -28,9 +28,9 @@ defmodule TimeManagerWeb.ClockControllerTest do
     assert response(post(conn, "/api/clocks/999999"), 404) == ""
   end
 
-  defp auth_conn(conn, user) do
-    conn
-    |> Plug.Test.init_test_session(%{user_id: user.id, csrf_token: "test-token"})
-    |> put_req_header("x-xsrf-token", "test-token")
-  end
+  # defp auth_conn(conn, user) do
+  #   conn
+  #   |> Plug.Test.init_test_session(%{user_id: user.id, csrf_token: "test-token"})
+  #   |> put_req_header("x-xsrf-token", "test-token")
+  # end
 end

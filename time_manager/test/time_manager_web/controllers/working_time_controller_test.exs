@@ -42,9 +42,9 @@ defmodule TimeManagerWeb.WorkingTimeControllerTest do
     assert json_response(departure, 201)["data"]["end"] != nil
   end
 
-  defp auth_conn(conn, user) do
-    conn
-    |> Plug.Test.init_test_session(%{user_id: user.id, csrf_token: "test-token"})
-    |> put_req_header("x-xsrf-token", "test-token")
-  end
+  # defp auth_conn(conn, user) do
+  #   conn
+  #   |> Plug.Test.init_test_session(%{user_id: user.id, csrf_token: "test-token"})
+  #   |> put_req_header("x-xsrf-token", "test-token")
+  # end
 end

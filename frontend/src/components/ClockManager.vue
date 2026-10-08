@@ -3,6 +3,7 @@ import api from '../services/api'
 import { readAuthUser } from '../utils/auth'
 import { queueClockEvent, synchronisePendingEvents } from '../services/syncService'
 import { isOnline } from '../services/networkService'
+import { vibrateSuccess } from '../services/nativeFeatures'
 
 export default {
   name: 'ClockManager',
@@ -63,6 +64,7 @@ export default {
           return
         }
         await api.clockInOut(this.userID, { event_type: eventType, occurred_at: occurredAt })
+        vibrateSuccess()
         await this.refresh()
       } catch (error) {
         this.errorMessage = error.response?.data?.error === 'already clocked in'

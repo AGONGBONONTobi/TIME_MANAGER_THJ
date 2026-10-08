@@ -16,7 +16,10 @@ function mountComponent() {
 }
 
 describe('WorkingTimes.vue', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+  })
 
   it('fetches on mount with route userID', async () => {
     api.getWorkingTimes.mockResolvedValue({ data: { data: [] } })

@@ -44,26 +44,45 @@ export function writeAuthUser(user) {
   return payload
 }
 
-export function writeAuthToken(token) {
-  if (typeof window !== 'undefined' && token) {
+function secureStorage() {
+  const SecureStorage = globalThis.cordova?.plugins?.SecureStorage
+  if (!SecureStorage) return Promise.resolve(null)
+  return new Promise((resolve) => {
+    try {
+      resolve(new SecureStorage(() => {}, () => {}, 'time_manager'))
+    } catch {
+      resolve(null)
+    }
+  })
+}
+
+export async function writeAuthToken(token) {
+  if (!token) return ''
+  const storage = await secureStorage()
+  if (storage) {
+    await new Promise((resolve, reject) => storage.set(resolve, reject, AUTH_TOKEN_STORAGE_KEY, token))
+  } else if (typeof window !== 'undefined') {
     window.localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token)
   }
-
-  return token || ''
+  return token
 }
 
-export function getAuthToken() {
-  if (typeof window === 'undefined') {
-    return ''
+export async function getAuthToken() {
+  const storage = await secureStorage()
+  if (storage) {
+    return new Promise((resolve) => storage.get(resolve, () => resolve(''), AUTH_TOKEN_STORAGE_KEY))
   }
-
-  return window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) || ''
+  return typeof window === 'undefined' ? '' : window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) || ''
 }
 
-export function clearAuthUser() {
+export async function clearAuthUser() {
   if (typeof window !== 'undefined') {
     window.localStorage.removeItem(AUTH_STORAGE_KEY)
     window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY)
+  }
+  const storage = await secureStorage()
+  if (storage) {
+    await new Promise((resolve) => storage.remove(resolve, resolve, AUTH_TOKEN_STORAGE_KEY))
   }
 }
 

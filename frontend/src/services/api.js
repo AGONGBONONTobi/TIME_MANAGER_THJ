@@ -9,14 +9,14 @@ const api = axios.create({
   }
 })
 
-api.interceptors.request.use((config) => {
+api.interceptors.request.use(async (config) => {
   const csrfToken = getCsrfToken()
 
   if (csrfToken && config.headers) {
     config.headers['x-xsrf-token'] = csrfToken
   }
 
-  const authToken = getAuthToken()
+  const authToken = await getAuthToken()
   if (authToken && config.headers) {
     config.headers.Authorization = `Bearer ${authToken}`
   }

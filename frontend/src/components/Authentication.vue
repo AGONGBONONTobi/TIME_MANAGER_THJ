@@ -38,7 +38,7 @@ export default {
           throw new Error('Réponse de connexion incomplète.')
         }
 
-        writeAuthToken(response.data?.token)
+        await writeAuthToken(response.data?.token)
         writeAuthUser({
           id: user.id,
           username: user.username || user.email || 'Utilisateur',

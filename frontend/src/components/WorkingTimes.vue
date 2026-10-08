@@ -47,6 +47,8 @@
 
 <script>
 import api from '../services/api'
+import { loadWorkingTimes, saveWorkingTimes } from '../services/localDatabase'
+import { isOnline } from '../services/networkService'
 
 export default {
   name: 'WorkingTimes',
@@ -92,8 +94,17 @@ export default {
       try {
         const response = await api.getWorkingTimes(this.userId)
         this.workingTimes = response.data.data || []
-      } catch {
-        this.errorMessage = 'Impossible de charger les sessions. Vérifiez que l’API est démarrée.'
+        await saveWorkingTimes(this.userId, this.workingTimes)
+      } catch (error) {
+        const cached = await loadWorkingTimes(this.userId)
+        if (cached) {
+          this.workingTimes = cached
+          this.errorMessage = 'Historique hors ligne. Dernière version enregistrée affichée.'
+        } else {
+          this.errorMessage = isOnline()
+            ? 'Impossible de charger les sessions. Vérifiez que l’API est démarrée.'
+            : 'Aucun historique disponible hors ligne.'
+        }
       } finally {
         this.isLoading = false
       }

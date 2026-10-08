@@ -1,6 +1,7 @@
 import api from './api'
 import { enqueueEvent, listPendingEvents, removeEvent, updateEvent } from './localDatabase'
 import { isOnline } from './networkService'
+import { notifySync } from './nativeFeatures'
 
 let isSyncing = false
 
@@ -27,7 +28,11 @@ export async function synchronisePendingEvents() {
   isSyncing = true
   try {
     const events = await listPendingEvents()
-    for (const event of events) {
+    let synchronisedCount = 0
+    const batchSize = 10
+    for (let offset = 0; offset < events.length; offset += batchSize) {
+      const batch = events.slice(offset, offset + batchSize)
+      for (const event of batch) {
       await updateEvent(event, { status: 'syncing' })
       try {
         await api.clockInOut(event.user_id, {
@@ -36,6 +41,7 @@ export async function synchronisePendingEvents() {
           occurred_at: event.occurred_at
         })
         await removeEvent(event)
+        synchronisedCount += 1
       } catch (error) {
         await updateEvent(event, {
           status: 'failed',
@@ -43,6 +49,8 @@ export async function synchronisePendingEvents() {
           last_error: error?.message || 'Synchronisation impossible'
         })
         if (!error?.response || error.response.status >= 500) break
+      }
+      if (synchronisedCount > 0) notifySync(`${synchronisedCount} pointage(s) synchronisé(s).`)
       }
     }
   } finally {

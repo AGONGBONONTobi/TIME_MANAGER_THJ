@@ -20,12 +20,16 @@
       "cordova-plugin-network-information": {},
       "cordova-sqlite-storage": {},
       "cordova-plugin-vibration": {}
+      ,"cordova-plugin-local-notification": {}
+      ,"cordova-plugin-secure-storage-echo": {}
     }
   },
   "devDependencies": {
     "cordova-android": "^15.1.0",
     "cordova-plugin-network-information": "^3.1.0",
     "cordova-plugin-vibration": "^3.1.1",
+    "cordova-plugin-local-notification": "^1.2.3",
+    "cordova-plugin-secure-storage-echo": "^5.1.1",
     "cordova-sqlite-storage": "^7.0.0"
   }
 }

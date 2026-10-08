@@ -1,6 +1,7 @@
 const STORAGE_KEY = 'time_manager_pending_events'
 const DB_NAME = 'time_manager'
 const DB_VERSION = 1
+const WORKING_TIMES_KEY = 'time_manager_working_times'
 let sqliteDatabasePromise
 
 function hasSqlite() {
@@ -124,4 +125,44 @@ export async function clearLocalDatabase() {
     await execute(database, 'DELETE FROM pending_events')
   }
   if (typeof window !== 'undefined') window.localStorage.removeItem(STORAGE_KEY)
+  if (typeof window !== 'undefined') window.localStorage.removeItem(WORKING_TIMES_KEY)
+}
+
+export async function saveWorkingTimes(userId, workingTimes) {
+  const payload = { user_id: Number(userId), updated_at: new Date().toISOString(), data: workingTimes }
+  const database = await openSqlite()
+  if (database) {
+    await execute(database, `CREATE TABLE IF NOT EXISTS working_times_cache (
+      user_id INTEGER PRIMARY KEY,
+      updated_at TEXT NOT NULL,
+      data TEXT NOT NULL
+    )`)
+    await execute(database, `INSERT OR REPLACE INTO working_times_cache (user_id, updated_at, data) VALUES (?, ?, ?)`, [
+      payload.user_id, payload.updated_at, JSON.stringify(workingTimes)
+    ])
+    return payload
+  }
+  const cache = JSON.parse(window.localStorage.getItem(WORKING_TIMES_KEY) || '{}')
+  cache[payload.user_id] = payload
+  window.localStorage.setItem(WORKING_TIMES_KEY, JSON.stringify(cache))
+  return payload
+}
+
+export async function loadWorkingTimes(userId) {
+  const database = await openSqlite()
+  if (database) {
+    await execute(database, `CREATE TABLE IF NOT EXISTS working_times_cache (
+      user_id INTEGER PRIMARY KEY,
+      updated_at TEXT NOT NULL,
+      data TEXT NOT NULL
+    )`)
+    const result = await execute(database, 'SELECT data FROM working_times_cache WHERE user_id = ?', [Number(userId)])
+    return result.rows.length ? JSON.parse(result.rows.item(0).data) : null
+  }
+  try {
+    const cache = JSON.parse(window.localStorage.getItem(WORKING_TIMES_KEY) || '{}')
+    return cache[Number(userId)]?.data || null
+  } catch {
+    return null
+  }
 }

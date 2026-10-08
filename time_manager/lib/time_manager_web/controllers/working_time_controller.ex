@@ -180,7 +180,7 @@ defmodule TimeManagerWeb.WorkingTimeController do
   defp working_time_attrs(params) do
     params
     |> Map.get("workingtime", params)
-    |> Map.take(["start", "end", "start_at", "end_at"])
+    |> Map.take(["start", "end", "start_at", "end_at", "break_duration"])
     |> Map.new(fn
       {"start_at", value} -> {"start", value}
       {"end_at", value} -> {"end", value}

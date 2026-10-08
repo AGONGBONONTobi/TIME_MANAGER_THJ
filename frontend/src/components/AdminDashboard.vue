@@ -63,6 +63,30 @@ export default {
       } catch (error) {
         this.errorMessage = 'L’équipe n’a pas pu être créée.'
       }
+    },
+    async changeRole(userId, newRole) {
+      if (!window.confirm(`Confirmer le changement de rôle vers ${newRole} ?`)) return
+      try {
+        await api.updateUserRole(userId, newRole)
+        await this.loadData()
+      } catch (error) {
+        this.errorMessage = 'Le rôle n’a pas pu être mis à jour.'
+      }
+    },
+    async updateUserLifecycle(user) {
+      try {
+        await api.updateUser(user.id, {
+          user: {
+            status: user.status,
+            contract_start: user.contract_start || null,
+            contract_end: user.contract_end || null
+          }
+        })
+        this.errorMessage = ''
+        alert(`Les informations de ${user.username} ont été mises à jour.`)
+      } catch (error) {
+        this.errorMessage = 'Impossible de mettre à jour les informations de cet employé.'
+      }
     }
   },
   mounted() { this.loadData() }
@@ -90,11 +114,14 @@ export default {
           <ul class="admin-list compact-list"><li v-for="team in teams" :key="team.id"><div><strong>{{ team.name }}</strong><span>{{ team.members.length }} membre{{ team.members.length > 1 ? 's' : '' }}</span></div><span class="card-count">Manager #{{ team.manager_id }}</span></li></ul>
         </section>
       <section class="admin-card access-card">
-        <div class="card-heading"><div><p class="card-kicker">ACCÈS</p><h2>Droits des managers</h2></div><span class="card-count">{{ managers.length }} actifs</span></div>
-        <ul class="admin-list">
-          <li v-for="manager in managers" :key="manager.id">
-            <div><strong>{{ manager.name }}</strong><span>{{ manager.scope }}</span></div>
-            <span class="card-count">Actif</span>
+        <div class="card-heading"><div><p class="card-kicker">ACCÈS</p><h2>Droits et Rôles</h2></div><span class="card-count">{{ users.length }} utilisateurs</span></div>
+        <ul class="admin-list" style="max-height: 300px; overflow-y: auto;">
+          <li v-for="user in users" :key="user.id">
+            <div><strong>{{ user.username }}</strong><span>Role: {{ user.role }}</span></div>
+            <div class="leave-actions">
+              <button v-if="user.role !== 'manager'" class="action-link" type="button" @click="changeRole(user.id, 'manager')">Promouvoir Manager</button>
+              <button v-if="user.role !== 'employee' && user.role !== 'admin'" class="action-link" type="button" @click="changeRole(user.id, 'employee')">Rétrograder Employé</button>
+            </div>
           </li>
         </ul>
       </section>
@@ -109,6 +136,41 @@ export default {
         </ul>
       </section>
     </div>
+
+    <section class="admin-card rh-card" style="margin-top: 18px;">
+      <div class="card-heading"><div><p class="card-kicker">RH</p><h2>Cycle de vie des employés</h2></div></div>
+      <div class="table-wrap" style="margin-top: 18px; overflow-x: auto;">
+        <div class="team-table head" style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr; align-items: center; gap: 12px; padding: 0 4px; color: #9aa3af; font-size: 10px; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid #edf0f4; min-height: 34px;">
+          <span>Employé</span>
+          <span>Statut</span>
+          <span>Début contrat</span>
+          <span>Fin contrat</span>
+          <span>Actions</span>
+        </div>
+        <div v-for="user in users" :key="user.id" class="team-table" style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr; align-items: center; gap: 12px; padding: 12px 4px; border-bottom: 1px solid #edf0f4; font-size: 12px;">
+          <span class="cell-name">
+            <b>{{ user.username }}</b>
+            <small>{{ user.email }}</small>
+          </span>
+          <span>
+            <select v-model="user.status" style="padding: 4px; border-radius: 4px; border: 1px solid #e7eaf0;">
+              <option value="active">Actif (Joiner)</option>
+              <option value="suspended">Suspendu (Mover)</option>
+              <option value="terminated">Terminé (Leaver)</option>
+            </select>
+          </span>
+          <span>
+            <input type="date" v-model="user.contract_start" style="padding: 4px; border-radius: 4px; border: 1px solid #e7eaf0;" />
+          </span>
+          <span>
+            <input type="date" v-model="user.contract_end" style="padding: 4px; border-radius: 4px; border: 1px solid #e7eaf0;" />
+          </span>
+          <span class="cell-actions">
+            <button type="button" class="link-btn action-link" @click="updateUserLifecycle(user)">Sauvegarder</button>
+          </span>
+        </div>
+      </div>
+    </section>
 
     <section class="admin-card payroll-card">
       <div class="card-heading"><div><p class="card-kicker">PAIE</p><h2>Règles de majoration</h2></div><span class="card-count">{{ payrollRules.length }} règles</span></div>

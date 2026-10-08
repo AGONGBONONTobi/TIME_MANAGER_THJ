@@ -11,7 +11,9 @@ export default {
       isHelpOpen: false,
       isDarkMode: localStorage.getItem('darkMode') === 'true',
       currentUser: readAuthUser(),
-      lastDashboard: 'dashboard'
+      lastDashboard: 'dashboard',
+      batSignal: { active: false, message: '', triggered_at: null },
+      batSignalTimer: null
     }
   },
   computed: {
@@ -101,6 +103,29 @@ export default {
         this.isProfileOpen = false
         this.isHelpOpen = false
       }
+    },
+    async pollBatSignal() {
+      if (!this.isAuthenticated) return
+      try {
+        const res = await api.getBatSignalStatus()
+        this.batSignal = res.data?.data || { active: false, message: '', triggered_at: null }
+      } catch (_) {
+        // silencieux si l'API est indisponible
+      }
+    },
+    async triggerBatSignal() {
+      const msg = prompt('Message d\'urgence :', 'Mobilisation immédiate — Toutes les équipes en alerte !')
+      if (!msg) return
+      try {
+        await api.triggerBatSignal(msg)
+        this.batSignal = { active: true, message: msg, triggered_at: new Date().toISOString() }
+      } catch (_) { alert('Impossible de déclencher l\'alerte.') }
+    },
+    async clearBatSignal() {
+      try {
+        await api.clearBatSignal()
+        this.batSignal = { active: false, message: '', triggered_at: null }
+      } catch (_) { alert('Impossible de désactiver l\'alerte.') }
     }
   },
   mounted() {
@@ -112,8 +137,13 @@ export default {
     if (this.$route.path === '/manager') this.lastDashboard = 'manager'
     else if (this.$route.path === '/admin') this.lastDashboard = 'admin'
     else if (this.$route.path === '/employee') this.lastDashboard = 'employee'
+    this.pollBatSignal()
+    this.batSignalTimer = setInterval(this.pollBatSignal, 15000)
   },
-  beforeUnmount() { window.removeEventListener('keydown', this.handleEscape) }
+  beforeUnmount() {
+    window.removeEventListener('keydown', this.handleEscape)
+    if (this.batSignalTimer) clearInterval(this.batSignalTimer)
+  }
 }
 </script>
 
@@ -124,6 +154,15 @@ export default {
 
   <div v-else class="app-shell">
     <a class="skip-link" href="#main-content">Aller au contenu principal</a>
+    <!-- Bannière Bat-Signal -->
+    <div v-if="batSignal.active" class="bat-signal-banner" role="alert" aria-live="assertive">
+      <span class="bat-icon" aria-hidden="true">🦇</span>
+      <div class="bat-body">
+        <strong>ALERTE GOTHAM — BAT-SIGNAL ACTIF</strong>
+        <span>{{ batSignal.message }}</span>
+      </div>
+      <button v-if="canViewAdmin" class="bat-dismiss" type="button" @click="clearBatSignal" aria-label="Désactiver le Bat-Signal">✕ Désactiver</button>
+    </div>
     <div v-if="isNavOpen" class="mobile-scrim" aria-hidden="true" @click="closeNav"></div>
     <aside class="sidebar" :class="{ 'is-open': isNavOpen }">
       <div class="brand"><span class="brand-symbol" aria-hidden="true"><i></i></span><span>Time Manager</span></div>
@@ -136,6 +175,7 @@ export default {
         <router-link v-if="isAuthenticated" class="sidebar-link" :to="{ name: 'chartManager', params: { userID: currentUserId } }" @click="closeNav"><span class="nav-icon" aria-hidden="true">▥</span><span>Graphiques</span><span class="nav-arrow" aria-hidden="true">›</span></router-link>
         <router-link v-if="canViewManager" class="sidebar-link" to="/manager" @click="closeNav"><span class="nav-icon" aria-hidden="true">◫</span><span>Espace manager</span><span class="nav-arrow" aria-hidden="true">›</span></router-link>
         <router-link v-if="canViewAdmin" class="sidebar-link" to="/admin" @click="closeNav"><span class="nav-icon" aria-hidden="true">⚑</span><span>Espace admin</span><span class="nav-arrow" aria-hidden="true">›</span></router-link>
+        <button v-if="canViewAdmin" class="sidebar-link bat-trigger-btn" type="button" @click="triggerBatSignal"><span class="nav-icon" aria-hidden="true">🦇</span><span>Déclencher Bat-Signal</span></button>
       </nav>
       <div class="sidebar-footer"><button class="sidebar-help" type="button" @click="toggleHelp"><span class="help-orb" aria-hidden="true">?</span><span><strong>Besoin d'aide ?</strong><small>Ouvrir le centre d'aide</small></span></button><div class="sidebar-version">TIME MANAGER <span>v1.0</span></div></div>
     </aside>
@@ -173,6 +213,55 @@ export default {
 :root { font-family: 'DM Sans', sans-serif; color: #20242e; background: #f7f8fb; font-synthesis: none; }
 * { box-sizing: border-box; } body { min-width: 320px; margin: 0; } button, input { font: inherit; }
 .auth-shell { min-height: 100vh; }
+
+/* ═══════ BAT-SIGNAL BANNER ═══════ */
+.bat-signal-banner {
+  position: fixed;
+  z-index: 200;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 24px;
+  background: linear-gradient(90deg, #1a0000 0%, #3d0000 40%, #1a0000 100%);
+  border-bottom: 3px solid #ff1f1f;
+  color: #fff;
+  animation: bat-pulse 2s ease-in-out infinite;
+  box-shadow: 0 4px 40px rgba(255, 31, 31, 0.6);
+}
+@keyframes bat-pulse {
+  0%, 100% { border-color: #ff1f1f; box-shadow: 0 4px 40px rgba(255,31,31,0.6); }
+  50% { border-color: #ff6b6b; box-shadow: 0 4px 60px rgba(255, 107, 107, 0.9); }
+}
+.bat-icon { font-size: 28px; flex-shrink: 0; filter: drop-shadow(0 0 8px #ff4444); }
+.bat-body { flex: 1; }
+.bat-body strong { display: block; color: #ff6b6b; font: 800 13px 'Manrope', sans-serif; letter-spacing: .12em; text-transform: uppercase; }
+.bat-body span { display: block; margin-top: 3px; color: rgba(255,255,255,0.85); font-size: 12px; }
+.bat-dismiss {
+  padding: 7px 14px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.bat-dismiss:hover { background: rgba(255,255,255,0.2); }
+.bat-trigger-btn {
+  border: 1px dashed #ff6b6b !important;
+  color: #ff9999 !important;
+  margin-top: 8px !important;
+}
+.bat-trigger-btn:hover { background: rgba(255, 107, 107, 0.15) !important; color: #ffbbbb !important; }
+/* Décale l'app vers le bas quand la bannière est active */
+.app-shell:has(.bat-signal-banner) .main-shell { margin-top: 65px; }
+.app-shell:has(.bat-signal-banner) .sidebar { top: 65px; }
+
 .app-shell { min-height: 100vh; background: #f7f8fb; }.sidebar { position: fixed; z-index: 20; inset: 0 auto 0 0; display: flex; width: 276px; flex-direction: column; padding: 23px 14px 18px; color: #bec5d1; background: #1d2430; }.brand { display: flex; align-items: center; gap: 11px; padding: 0 8px 35px; color: #fff; font: 800 20px 'Manrope', sans-serif; letter-spacing: -.04em; }.brand-symbol { position: relative; display: grid; width: 30px; height: 30px; place-items: center; border: 1.5px solid #e9edf5; border-radius: 50%; }.brand-symbol::before { width: 10px; height: 10px; content: ''; border: 2px solid #a49aff; border-radius: 50%; }.brand-symbol i { position: absolute; top: -2px; right: -2px; width: 9px; height: 15px; background: #1d2430; border-bottom: 2px solid #e9edf5; transform: rotate(28deg); }
 .nav-section-title { margin: 0 0 13px; color: #978bf7; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }.nav-section-spaced { margin-top: 29px; }.sidebar-nav { flex: 1; overflow-y: auto; }.sidebar-link { display: flex; align-items: center; gap: 13px; min-height: 44px; margin: 3px 0; padding: 0 12px; color: #bec5d1; font-size: 13px; text-decoration: none; border-radius: 9px; transition: background .2s ease, color .2s ease; }.sidebar-link:hover, .sidebar-link.is-selected { color: #fff; background: #2b3443; }.sidebar-link.is-selected { box-shadow: inset 3px 0 #9a8cff; }.nav-icon { display: inline-grid; width: 18px; place-items: center; color: #8793a5; font-size: 19px; line-height: 1; }.sidebar-link:hover .nav-icon, .sidebar-link.is-selected .nav-icon { color: #c1baff; }.nav-arrow { margin-left: auto; font-size: 21px; line-height: 1; }.sidebar-footer { padding-top: 18px; }.sidebar-help { display: flex; align-items: center; gap: 10px; padding: 13px 10px; border-top: 1px solid #303947; border-bottom: 1px solid #303947; }.help-orb { display: grid; width: 30px; height: 30px; place-items: center; color: #a79cff; border: 1px solid #5d6680; border-radius: 50%; }.sidebar-help strong, .sidebar-help small { display: block; }.sidebar-help strong { color: #eef0f5; font-size: 11px; }.sidebar-help small { margin-top: 3px; color: #8993a4; font-size: 10px; }.sidebar-version { margin-top: 17px; color: #687386; font-size: 9px; letter-spacing: .08em; text-align: center; }.sidebar-version span { color: #9a8cff; }
 .main-shell { min-height: 100vh; margin-left: 276px; }.topbar { position: relative; z-index: 10; display: flex; align-items: center; justify-content: space-between; height: 72px; padding: 0 38px; background: #1e5a8a; border-bottom: 1px solid #15466b; }.page-heading { display: flex; align-items: center; gap: 10px; color: #fff; font: 700 16px 'Manrope', sans-serif; }.page-heading-dot { width: 8px; height: 8px; background: #9a8cff; border-radius: 50%; }.topbar-actions { position: relative; display: flex; align-items: center; gap: 22px; }.notification-button { position: relative; width: 28px; height: 30px; color: #fff; background: transparent; border: 0; cursor: pointer; }.bell { display: inline-block; font-size: 25px; transform: rotate(180deg); }.notification-button b { position: absolute; top: -4px; right: -1px; display: grid; width: 17px; height: 17px; place-items: center; color: #fff; font-size: 10px; background: #ed575f; border: 2px solid #fff; border-radius: 50%; }.profile-button { display: flex; align-items: center; gap: 10px; padding: 0; color: #fff; text-align: left; background: transparent; border: 0; cursor: pointer; }.avatar { display: grid; place-items: center; color: #6e4c31; font-weight: 700; background: #f2c696; border-radius: 50%; }.avatar-small { width: 38px; height: 38px; font-size: 11px; border: 3px solid #e7f3ff; }.profile-copy strong, .profile-copy small { display: block; }.profile-copy strong { font-size: 13px; }.profile-copy small { margin-top: 3px; color: #d0e4f5; font-size: 11px; }.profile-chevron { color: #d0e4f5; font-size: 16px; }.profile-menu { position: absolute; top: 49px; right: 0; display: grid; min-width: 190px; gap: 5px; padding: 15px; color: #3b4350; background: #fff; border: 1px solid #e8ebf0; border-radius: 10px; box-shadow: 0 12px 25px #24304718; }.profile-menu span { color: #89919f; font-size: 11px; }.profile-menu button { margin-top: 7px; padding: 6px 0; color: #7366dc; text-align: left; background: none; border: 0; cursor: pointer; }.menu-toggle { display: none; width: 34px; height: 34px; padding: 7px 5px; background: #1e5a8a; border: 1px solid #15466b; border-radius: 7px; }.menu-toggle span { display: block; height: 2px; margin: 4px 2px; background: #fff; }.app-content { min-height: calc(100vh - 72px); padding: 32px 38px 48px; }.mobile-scrim { display: none; }

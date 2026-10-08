@@ -5,6 +5,7 @@ defmodule TimeManager.Clocking.Clock do
   schema "clocks" do
     field :status, :boolean
     field :time, :utc_datetime
+    field :deleted_at, :utc_datetime
     belongs_to :user, TimeManager.Accounts.User
 
     timestamps(type: :utc_datetime)

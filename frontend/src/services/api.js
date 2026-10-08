@@ -67,4 +67,22 @@ api.createWorkingTime = (userID, workingTime) => api.post(`/users/${userID}/work
 api.updateWorkingTime = (workingTimeID, workingTime) => api.put(`/workingtime/${workingTimeID}`, { workingtime: workingTime })
 api.deleteWorkingTime = (workingTimeID) => api.delete(`/workingtime/${workingTimeID}`)
 
+api.updateUserRole = (userID, role) => api.put(`/users/${userID}/role`, { role })
+api.getClockCorrections = () => api.get('/clock-corrections')
+api.createClockCorrection = (correction) => api.post('/clock-corrections', { clock_correction: correction })
+api.getPendingClockCorrections = () => api.get('/clock-corrections/pending')
+api.approveClockCorrection = (id) => api.post(`/clock-corrections/${id}/approve`)
+api.rejectClockCorrection = (id) => api.post(`/clock-corrections/${id}/reject`)
+
+// Bat-Signal
+api.getBatSignalStatus = () => api.get('/bat-signal/status')
+api.triggerBatSignal = (message) => api.post('/bat-signal/trigger', { message })
+api.clearBatSignal = () => api.delete('/bat-signal/trigger')
+
+// Pointage d'équipe
+api.clockTeam = (teamID) => api.post(`/manager/teams/${teamID}/clock`)
+
+// Paie avancée
+api.getPayrollSummary = (userID) => api.get(`/manager/users/${userID}/payroll`)
+
 export default api

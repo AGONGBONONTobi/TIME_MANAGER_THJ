@@ -1,7 +1,7 @@
 <script>
 import api from '../services/api'
 
-const emptyWorkingTime = () => ({ start: '', end: '' })
+const emptyWorkingTime = () => ({ start: '', end: '', break_duration: 0 })
 
 export default {
   name: 'WorkingTime',
@@ -36,7 +36,7 @@ export default {
       try {
         const response = await api.getWorkingTime(this.userID, this.workingTimeID)
         const workingTime = response.data.data
-        this.form = { start: this.toInputDateTime(workingTime.start), end: this.toInputDateTime(workingTime.end) }
+        this.form = { start: this.toInputDateTime(workingTime.start), end: this.toInputDateTime(workingTime.end), break_duration: workingTime.break_duration || 0 }
       } catch {
         this.errorMessage = 'Impossible de charger cette session.'
       } finally {
@@ -46,7 +46,9 @@ export default {
     // ✅ after
     payload() {
       return {
-        start_at: this.toApiDateTime(this.form.start), ...(this.form.end ? { end_at: this.toApiDateTime(this.form.end) } : {})
+        start_at: this.toApiDateTime(this.form.start), 
+        ...(this.form.end ? { end_at: this.toApiDateTime(this.form.end) } : {}),
+        break_duration: Number(this.form.break_duration) || 0
       }
     },
     async createWorkingTime() {
@@ -96,7 +98,9 @@ export default {
     <div class="working-time-header"><div><p class="eyebrow">Gestion des pointages · utilisateur {{ userID }}</p><h1>{{ title }}</h1><p class="intro">Conserve des horaires précis pour garder un historique fiable.</p></div><router-link class="back-link" :to="{ name: 'workingTimes', params: { userID } }">Retour à l'historique</router-link></div>
     <form class="working-time-form" @submit.prevent="submit">
       <p v-if="isLoading" class="form-message">Chargement de la session…</p><p v-if="errorMessage" class="form-error" role="alert">{{ errorMessage }}</p>
-      <label>Début <input v-model="form.start" type="datetime-local" required /></label><label>Fin <input v-model="form.end" type="datetime-local" /></label>
+      <label>Début <input v-model="form.start" type="datetime-local" required /></label>
+      <label>Fin <input v-model="form.end" type="datetime-local" /></label>
+      <label>Durée de pause (minutes) <input v-model="form.break_duration" type="number" min="0" /></label>
       <div class="form-actions"><button class="primary-button" type="submit" :disabled="isLoading || isSaving">{{ isSaving ? 'Enregistrement…' : isEditing ? 'Enregistrer les modifications' : 'Créer la session' }}</button><button v-if="isEditing" class="delete-button" type="button" :disabled="isSaving" @click="deleteWorkingTime">Supprimer</button></div>
     </form>
   </section>

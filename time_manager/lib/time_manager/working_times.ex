@@ -19,7 +19,7 @@ defmodule TimeManager.WorkingTimes do
 
   def list_for_user(user_id, start_date \\ nil, end_date \\ nil) do
     WorkingTime
-    |> where([w], w.user_id == ^user_id)
+    |> where([w], w.user_id == ^user_id and is_nil(w.deleted_at))
     |> filter_by_start(start_date)
     |> filter_by_end(end_date)
     |> order_by([w], desc: w.start)

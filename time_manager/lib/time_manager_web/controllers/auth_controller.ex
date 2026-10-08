@@ -26,29 +26,35 @@ defmodule TimeManagerWeb.AuthController do
   def sign_in(conn, %{"email" => email, "password" => password}) do
     case Accounts.authenticate(email, password) do
       {:ok, user} ->
-        csrf_token = generate_csrf_token()
+        if user.status == "inactive" do
+          conn
+          |> put_status(:forbidden)
+          |> json(%{error: "Compte inactif."})
+        else
+          csrf_token = generate_csrf_token()
 
-        {:ok, jwt, _claims} = TimeManager.Token.generate_and_sign(%{
-          "user_id" => user.id,
-          "role" => user.role,
-          "csrf_token" => csrf_token
-        })
+          {:ok, jwt, _claims} = TimeManager.Token.generate_and_sign(%{
+            "user_id" => user.id,
+            "role" => user.role,
+            "csrf_token" => csrf_token
+          })
 
-        conn
-        |> put_resp_cookie("auth_token", jwt,
-          http_only: true,
-          secure: false,
-          same_site: "Lax",
-          path: "/"
-        )
-        |> put_resp_cookie("c-xsrf-token", csrf_token,
-          http_only: false,
-          secure: false,
-          same_site: "Lax",
-          path: "/"
-        )
-        |> put_status(:ok)
-        |> json(%{user: public_user(user)})
+          conn
+          |> put_resp_cookie("auth_token", jwt,
+            http_only: true,
+            secure: false,
+            same_site: "Lax",
+            path: "/"
+          )
+          |> put_resp_cookie("c-xsrf-token", csrf_token,
+            http_only: false,
+            secure: false,
+            same_site: "Lax",
+            path: "/"
+          )
+          |> put_status(:ok)
+          |> json(%{user: public_user(user)})
+        end
 
       {:error, :invalid_credentials} ->
         conn
@@ -74,7 +80,10 @@ defmodule TimeManagerWeb.AuthController do
       id: user.id,
       username: user.username,
       email: user.email,
-      role: user.role
+      role: user.role,
+      status: user.status,
+      contract_start: user.contract_start,
+      contract_end: user.contract_end
     }
   end
 

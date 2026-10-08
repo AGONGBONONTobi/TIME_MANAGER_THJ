@@ -99,4 +99,37 @@ defmodule TimeManagerWeb.UserController do
         send_resp(conn, :no_content, "")
     end
   end
+
+  operation :update_role,
+    summary: "Update user role (Admin only)",
+    parameters: [userID: [in: :path, required: true, type: :string]],
+    responses: [ok: "Role updated", bad_request: "Invalid role", not_found: "User not found"]
+
+  def update_role(conn, %{"userID" => id, "role" => role}) do
+    case Accounts.get_user(id) do
+      nil ->
+        conn
+        |> put_status(404)
+        |> json(%{error: "User not found"})
+
+      user ->
+        if role in ["employee", "manager", "admin"] do
+          case Accounts.update_user(user, %{"role" => role}) do
+            {:ok, updated_user} ->
+              conn
+              |> put_status(200)
+              |> render(:show, user: updated_user)
+
+            {:error, _changeset} ->
+              conn
+              |> put_status(400)
+              |> json(%{error: "Failed to update role"})
+          end
+        else
+          conn
+          |> put_status(400)
+          |> json(%{error: "Invalid role"})
+        end
+    end
+  end
 end

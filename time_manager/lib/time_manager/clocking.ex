@@ -11,14 +11,14 @@ defmodule TimeManager.Clocking do
 
   def list_clocks(user_id) do
     Clock
-    |> where([c], c.user_id == ^user_id)
+    |> where([c], c.user_id == ^user_id and is_nil(c.deleted_at))
     |> order_by([c], desc: c.id)
     |> Repo.all()
   end
 
   def get_last_clock(user_id) do
     Clock
-    |> where([c], c.user_id == ^user_id)
+    |> where([c], c.user_id == ^user_id and is_nil(c.deleted_at))
     |> order_by([c], desc: c.id)
     |> limit(1)
     |> Repo.one()
@@ -81,4 +81,86 @@ defmodule TimeManager.Clocking do
   defp determine_status(nil), do: true
   defp determine_status(%Clock{status: true}), do: false
   defp determine_status(%Clock{status: false}), do: true
+
+  # ═══════════════════════════════════════════════════════
+  # CLOCK CORRECTIONS
+  # ═══════════════════════════════════════════════════════
+
+  alias TimeManager.Clocking.ClockCorrection
+
+  def list_clock_corrections(user_id) do
+    ClockCorrection
+    |> where([c], c.user_id == ^user_id)
+    |> order_by([c], desc: c.inserted_at)
+    |> Repo.all()
+  end
+
+  def list_pending_clock_corrections do
+    ClockCorrection
+    |> where([c], c.status == "pending")
+    |> order_by([c], desc: c.inserted_at)
+    |> Repo.all()
+  end
+
+  def get_clock_correction!(id), do: Repo.get!(ClockCorrection, id)
+
+  def create_clock_correction(attrs \\ %{}) do
+    %ClockCorrection{}
+    |> ClockCorrection.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  def approve_clock_correction(id, manager_id) do
+    case Repo.get(ClockCorrection, id) do
+      nil ->
+        {:error, :not_found}
+
+      correction ->
+        Ecto.Multi.new()
+        |> Ecto.Multi.update(
+          :correction,
+          ClockCorrection.review_changeset(correction, %{
+            status: "approved",
+            reviewed_by_id: manager_id,
+            reviewed_at: DateTime.utc_now() |> DateTime.truncate(:second)
+          })
+        )
+        |> Ecto.Multi.run(:soft_delete_old_clock, fn repo, _changes ->
+          if correction.original_clock_id do
+            old_clock = repo.get!(Clock, correction.original_clock_id)
+            repo.update(Ecto.Changeset.change(old_clock, deleted_at: DateTime.utc_now() |> DateTime.truncate(:second)))
+          else
+            {:ok, nil}
+          end
+        end)
+        |> Ecto.Multi.insert(:new_clock, fn _changes ->
+          Clock.changeset(%Clock{}, %{
+            user_id: correction.user_id,
+            time: correction.proposed_time,
+            status: correction.proposed_status
+          })
+        end)
+        |> Repo.transaction()
+        |> case do
+          {:ok, %{correction: updated_correction}} -> {:ok, updated_correction}
+          {:error, _step, reason, _changes} -> {:error, reason}
+        end
+    end
+  end
+
+  def reject_clock_correction(id, manager_id) do
+    case Repo.get(ClockCorrection, id) do
+      nil ->
+        {:error, :not_found}
+
+      correction ->
+        correction
+        |> ClockCorrection.review_changeset(%{
+          status: "rejected",
+          reviewed_by_id: manager_id,
+          reviewed_at: DateTime.utc_now() |> DateTime.truncate(:second)
+        })
+        |> Repo.update()
+    end
+  end
 end

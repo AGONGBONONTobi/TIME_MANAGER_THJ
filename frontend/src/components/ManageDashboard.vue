@@ -20,7 +20,8 @@ export default {
       isTeamModalOpen: false,
       isTasksLoading: false,
       isLoading: true,
-      errorMessage: ''
+      errorMessage: '',
+      pendingCorrections: []
     }
   },
   computed: {
@@ -56,10 +57,16 @@ export default {
       this.isLoading = true
       this.errorMessage = ''
       try {
-        const [teamResponse, teamsResponse, usersResponse] = await Promise.all([api.getManagerTeam(), api.getTeams(), api.getUsers()])
+        const [teamResponse, teamsResponse, usersResponse, correctionsResponse] = await Promise.all([
+          api.getManagerTeam(), 
+          api.getTeams(), 
+          api.getUsers(),
+          api.getPendingClockCorrections().catch(() => ({ data: { data: [] } }))
+        ])
         this.employees = teamResponse.data?.data || []
         this.teams = teamsResponse.data?.data || []
         this.users = usersResponse.data?.data || []
+        this.pendingCorrections = correctionsResponse.data?.data || []
       } catch (error) {
         this.errorMessage = error?.response?.data?.error || 'Impossible de charger les données de l’équipe.'
       } finally {
@@ -163,6 +170,36 @@ export default {
       } catch (error) {
         this.errorMessage = 'Le statut de la tâche n’a pas pu être modifié.'
       }
+    },
+    async approveCorrection(id) {
+      try {
+        await api.approveClockCorrection(id)
+        await this.loadTeam()
+      } catch (error) {
+        this.errorMessage = 'La correction n\'a pas pu être approuvée.'
+      }
+    },
+    async rejectCorrection(id) {
+      try {
+        await api.rejectClockCorrection(id)
+        await this.loadTeam()
+      } catch (error) {
+        this.errorMessage = 'La correction n\'a pas pu être rejetée.'
+      }
+    },
+    async clockTeam(team) {
+      if (!window.confirm(`Pointer toute l'équipe "${team.name}" ?`)) return
+      try {
+        const res = await api.clockTeam(team.id)
+        const results = res.data?.data || []
+        const errors = results.filter(r => r.error)
+        if (errors.length) {
+          this.errorMessage = `${errors.length} pointage(s) ont échoué.`
+        }
+        await this.loadTeam()
+      } catch (error) {
+        this.errorMessage = 'Le pointage d\'équipe a échoué.'
+      }
     }
   }
 }
@@ -203,7 +240,7 @@ export default {
       </div>
       <div v-if="teams.length" class="teams-grid">
         <article v-for="team in teams" :key="team.id" class="team-card">
-          <div class="team-card-heading"><div><h3>{{ team.name }}</h3><span>{{ team.members.length }} membre{{ team.members.length > 1 ? 's' : '' }}</span></div><button class="team-id team-open" type="button" @click="openTeam(team)">Voir l’équipe ↗</button></div>
+          <div class="team-card-heading"><div><h3>{{ team.name }}</h3><span>{{ team.members.length }} membre{{ team.members.length > 1 ? 's' : '' }}</span></div><div style="display:flex;gap:6px;align-items:center;"><button class="team-clock-btn" type="button" @click="clockTeam(team)">🦇 Pointer</button><button class="team-id team-open" type="button" @click="openTeam(team)">Voir ↗</button></div></div>
           <ul v-if="team.members.length" class="member-list"><li v-for="member in team.members" :key="member.id"><span class="member-avatar">{{ member.username.slice(0, 1).toUpperCase() }}</span><span><b>{{ member.username }}</b><small>{{ member.email }}</small></span><i :class="{ inactive: !member.active }">{{ member.active ? 'Actif' : 'Inactif' }}</i><button class="remove-member" type="button" @click="removeMember(team, member)">Retirer</button></li></ul>
           <p v-else class="empty-members">Aucun membre affecté.</p>
           <form class="add-member-form" @submit.prevent="addMember(team)"><select v-model="memberToAdd[team.id]" aria-label="Choisir un employé" :disabled="!availableMembers(team).length"><option value="">{{ availableMembers(team).length ? 'Ajouter un employé…' : 'Tous les employés sont déjà affectés' }}</option><option v-for="user in availableMembers(team)" :key="user.id" :value="user.id">{{ user.username }} · {{ user.email }}</option></select><button type="submit" :disabled="!availableMembers(team).length">Ajouter</button></form>
@@ -259,6 +296,41 @@ export default {
         <strong>{{ missedCount }}</strong>
       </article>
     </div>
+
+    <!-- Corrections en attente -->
+    <section v-if="pendingCorrections.length" class="team-section">
+      <div class="section-title">
+        <div>
+          <p class="card-kicker">CORRECTIONS</p>
+          <h2>Demandes d'oubli de pointage ({{ pendingCorrections.length }})</h2>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="team-table head" style="grid-template-columns: 1fr 1fr 1fr 2fr 1fr;">
+          <span>Employé</span>
+          <span>Date et heure proposée</span>
+          <span>Type</span>
+          <span>Raison</span>
+          <span>Actions</span>
+        </div>
+        <div v-for="corr in pendingCorrections" :key="corr.id" class="team-table" style="grid-template-columns: 1fr 1fr 1fr 2fr 1fr;">
+          <span class="cell-name">
+            <b>Utilisateur #{{ corr.user_id }}</b>
+          </span>
+          <span>{{ new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(corr.proposed_time)) }}</span>
+          <span>
+            <b class="badge-nights" :class="{ danger: !corr.proposed_status }">
+              {{ corr.proposed_status ? 'Clock In' : 'Clock Out' }}
+            </b>
+          </span>
+          <span>{{ corr.reason }}</span>
+          <span class="cell-actions">
+            <button type="button" class="link-btn" @click="approveCorrection(corr.id)">Approuver</button>
+            <button type="button" class="link-btn danger" @click="rejectCorrection(corr.id)">Rejeter</button>
+          </span>
+        </div>
+      </div>
+    </section>
 
     <!-- Tableau de l'équipe -->
     <section class="team-section">
@@ -460,5 +532,6 @@ export default {
   .flip-digit { width: 24px; height: 34px; font-size: 18px; }
   .bar-row { grid-template-columns: 90px 1fr; }
 }
-.team-open { padding: 0; color: #786be7; background: transparent; border: 0; cursor: pointer; }.team-open:hover { text-decoration: underline; }.team-modal-backdrop { position: fixed; z-index: 60; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(20, 25, 35, .65); }.team-modal { position: relative; width: min(100%, 650px); max-height: min(88vh, 760px); overflow-y: auto; padding: 30px; background: #fff; border-radius: 16px; box-shadow: 0 24px 80px rgba(0, 0, 0, .22); }.modal-close { position: absolute; top: 12px; right: 14px; width: 34px; height: 34px; color: #7d8796; background: transparent; border: 0; font-size: 25px; cursor: pointer; }.team-modal h2 { margin: 0; color: #293140; font: 800 30px 'Manrope', sans-serif; letter-spacing: -.06em; }.team-description { margin: 8px 0 20px; color: #7d8796; font-size: 13px; line-height: 1.55; }.modal-label { color: #8a7cf0; font-size: 10px; font-weight: 800; letter-spacing: .12em; }.member-pills { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 9px; }.member-pills span { padding: 6px 10px; color: #5148a7; font-size: 11px; font-weight: 700; background: #eeedff; border-radius: 99px; }.member-pills .muted-pill { color: #8c96a5; background: #f1f3f6; }.tasks-heading { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-top: 26px; padding-top: 20px; border-top: 1px solid #edf0f4; }.tasks-heading h3 { margin: 4px 0 0; color: #293140; font: 700 18px 'Manrope', sans-serif; }.tasks-heading > span { color: #43ae76; font-size: 11px; font-weight: 700; }.task-form { display: grid; gap: 8px; margin-top: 14px; padding: 13px; background: #f8f9fc; border: 1px solid #edf0f4; border-radius: 10px; }.task-form input, .task-form textarea { width: 100%; padding: 9px 10px; color: #303847; background: #fff; border: 1px solid #e4e8ef; border-radius: 6px; font-size: 12px; resize: vertical; }.task-form-bottom { display: flex; gap: 8px; }.task-form-bottom input { flex: 1; }.task-form button { padding: 8px 12px; color: #fff; background: #786be7; border: 0; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; }.tasks-list { display: grid; gap: 8px; margin-top: 14px; }.task-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid #edf0f4; border-radius: 9px; }.task-item.completed { background: #f3fbf6; border-color: #d7efdf; }.task-check { display: grid; width: 22px; height: 22px; flex: 0 0 auto; place-items: center; color: #fff; background: #fff; border: 2px solid #b8c0cc; border-radius: 6px; cursor: pointer; }.task-item.completed .task-check { background: #43ae76; border-color: #43ae76; }.task-item > div { min-width: 0; }.task-item strong { color: #303847; font-size: 13px; }.task-item.completed strong { color: #71917b; text-decoration: line-through; }.task-item p { margin: 4px 0 0; color: #7d8796; font-size: 11px; line-height: 1.4; }.task-item small { display: block; margin-top: 6px; color: #9aa3af; font-size: 10px; }.tasks-state { margin-top: 15px; padding: 18px; color: #8c96a5; font-size: 12px; text-align: center; background: #f8f9fc; border-radius: 8px; }
+.team-clock-btn { padding: 4px 10px; color: #fff; font-size: 10px; font-weight: 700; background: #786be7; border: 0; border-radius: 99px; cursor: pointer; transition: background .15s; }.team-clock-btn:hover { background: #5f54c8; }.team-open { padding: 0; color: #786be7; background: transparent; border: 0; cursor: pointer; }.team-open:hover { text-decoration: underline; }.team-modal-backdrop { position: fixed; z-index: 60; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(20, 25, 35, .65); }.team-modal { position: relative; width: min(100%, 650px); max-height: min(88vh, 760px); overflow-y: auto; padding: 30px; background: #fff; border-radius: 16px; box-shadow: 0 24px 80px rgba(0, 0, 0, .22); }.modal-close { position: absolute; top: 12px; right: 14px; width: 34px; height: 34px; color: #7d8796; background: transparent; border: 0; font-size: 25px; cursor: pointer; }.team-modal h2 { margin: 0; color: #293140; font: 800 30px 'Manrope', sans-serif; letter-spacing: -.06em; }.team-description { margin: 8px 0 20px; color: #7d8796; font-size: 13px; line-height: 1.55; }.modal-label { color: #8a7cf0; font-size: 10px; font-weight: 800; letter-spacing: .12em; }.member-pills { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 9px; }.member-pills span { padding: 6px 10px; color: #5148a7; font-size: 11px; font-weight: 700; background: #eeedff; border-radius: 99px; }.member-pills .muted-pill { color: #8c96a5; background: #f1f3f6; }.tasks-heading { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-top: 26px; padding-top: 20px; border-top: 1px solid #edf0f4; }.tasks-heading h3 { margin: 4px 0 0; color: #293140; font: 700 18px 'Manrope', sans-serif; }.tasks-heading > span { color: #43ae76; font-size: 11px; font-weight: 700; }.task-form { display: grid; gap: 8px; margin-top: 14px; padding: 13px; background: #f8f9fc; border: 1px solid #edf0f4; border-radius: 10px; }.task-form input, .task-form textarea { width: 100%; padding: 9px 10px; color: #303847; background: #fff; border: 1px solid #e4e8ef; border-radius: 6px; font-size: 12px; resize: vertical; }.task-form-bottom { display: flex; gap: 8px; }.task-form-bottom input { flex: 1; }.task-form button { padding: 8px 12px; color: #fff; background: #786be7; border: 0; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; }.tasks-list { display: grid; gap: 8px; margin-top: 14px; }.task-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid #edf0f4; border-radius: 9px; }.task-item.completed { background: #f3fbf6; border-color: #d7efdf; }.task-check { display: grid; width: 22px; height: 22px; flex: 0 0 auto; place-items: center; color: #fff; background: #fff; border: 2px solid #b8c0cc; border-radius: 6px; cursor: pointer; }.task-item.completed .task-check { background: #43ae76; border-color: #43ae76; }.task-item > div { min-width: 0; }.task-item strong { color: #303847; font-size: 13px; }.task-item.completed strong { color: #71917b; text-decoration: line-through; }.task-item p { margin: 4px 0 0; color: #7d8796; font-size: 11px; line-height: 1.4; }.task-item small { display: block; margin-top: 6px; color: #9aa3af; font-size: 10px; }.tasks-state { margin-top: 15px; padding: 18px; color: #8c96a5; font-size: 12px; text-align: center; background: #f8f9fc; border-radius: 8px; }
 </style>
+

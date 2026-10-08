@@ -8,6 +8,9 @@ defmodule TimeManager.Accounts.User do
     field :password, :string, virtual: true
     field :password_hash, :string
     field :role, :string, default: "employee"
+    field :status, :string, default: "active"
+    field :contract_start, :date
+    field :contract_end, :date
 
     timestamps(type: :utc_datetime)
     has_many :clocks, TimeManager.Clocking.Clock, on_delete: :delete_all
@@ -17,11 +20,12 @@ defmodule TimeManager.Accounts.User do
   @doc false
   def changeset(user, attrs) do
     user
-    |> cast(attrs, [:username, :email, :password, :role])
+    |> cast(attrs, [:username, :email, :password, :role, :status, :contract_start, :contract_end])
     |> validate_required([:username, :email])
     |> validate_length(:password, min: 8)
     |> validate_format(:email, ~r/^[^\s]+@[^\s]+\.[^\s]+$/)
     |> validate_inclusion(:role, ["employee", "manager", "admin"])
+    |> validate_inclusion(:status, ["active", "inactive", "on_leave"])
     |> unique_constraint(:email)
     |> hash_password()
   end

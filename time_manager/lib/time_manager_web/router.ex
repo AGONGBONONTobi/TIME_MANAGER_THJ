@@ -55,11 +55,32 @@ defmodule TimeManagerWeb.Router do
       delete("/:userID", UserController, :delete)
     end
 
+    scope "/users" do
+      pipe_through [:require_auth, :require_admin]
+
+      patch("/:userID/role", UserController, :update_role)
+    end
+
     scope "/manager" do
       pipe_through [:require_auth, :require_manager]
 
       get("/team", ManagerController, :team)
       post("/users/:userID/reminders", ManagerController, :remind)
+      post("/teams/:team_id/clock", ManagerController, :team_clock)
+      get("/users/:userID/payroll", ManagerController, :payroll_summary)
+    end
+
+    scope "/bat-signal" do
+      pipe_through [:require_auth]
+
+      get "/status", BatSignalController, :status
+    end
+
+    scope "/bat-signal" do
+      pipe_through [:require_auth, :require_admin]
+
+      post "/trigger", BatSignalController, :trigger
+      delete "/trigger", BatSignalController, :clear
     end
 
     scope "/notifications" do
@@ -136,6 +157,21 @@ defmodule TimeManagerWeb.Router do
 
       get("/:userID", ClockController, :index)
       post("/:userID", ClockController, :create)
+    end
+
+    scope "/clock-corrections" do
+      pipe_through [:require_auth]
+
+      get "/", ClockCorrectionController, :index
+      post "/", ClockCorrectionController, :create
+    end
+
+    scope "/clock-corrections" do
+      pipe_through [:require_auth, :require_manager]
+
+      get "/pending", ClockCorrectionController, :index_for_manager
+      post "/:id/approve", ClockCorrectionController, :approve
+      post "/:id/reject", ClockCorrectionController, :reject
     end
 
     scope "/users/:userID" do

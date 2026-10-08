@@ -24,6 +24,8 @@
     <preference name="StatusBarBackgroundColor" value="#111827" />
     <preference name="SplashScreenDelay" value="2000" />
     <preference name="AndroidPersistentFileLocation" value="Compatibility" />
+    <preference name="scheme" value="http" />
+    <preference name="hostname" value="localhost" />
 
     <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application" xmlns:android="http://schemas.android.com/apk/res/android">
         <application android:usesCleartextTraffic="true" />

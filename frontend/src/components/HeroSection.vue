@@ -2,7 +2,10 @@
   <section class="hero-section">
     <div class="hero-content">
       <p class="hero-eyebrow">Gotham · Time Manager</p>
-      <h1>Time Manager</h1>
+      <h1 class="hero-title">
+        <img src="@/assets/logo.jpg" alt="Time Manager Logo" class="brand-logo" />
+        Time Manager
+      </h1>
       <p class="hero-lead">
         À Gotham, chaque heure compte. Un travail rigoureux pour une ville qui ne dort jamais.
       </p>
@@ -43,11 +46,23 @@
   text-transform: uppercase;
 }
 
-h1 {
+h1.hero-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
   margin-bottom: 1rem;
   font-size: clamp(2.5rem, 7vw, 5rem);
   font-weight: 800;
   letter-spacing: -0.05em;
+}
+
+.hero-title .brand-logo {
+  width: clamp(28px, 4.5vw, 40px);
+  height: clamp(28px, 4.5vw, 40px);
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid #fff;
 }
 
 .hero-lead {

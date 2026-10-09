@@ -18,7 +18,7 @@ export default {
   <main class="auth-page">
     <section class="auth-form-side">
       <div class="auth-brand" aria-label="Time Manager">
-        <span class="auth-brand-mark">TM</span>
+        <img src="@/assets/logo.jpg" alt="Time Manager Logo" class="brand-logo" />
         <span>Time Manager</span>
       </div>
 
@@ -78,16 +78,12 @@ export default {
   letter-spacing: -0.03em;
 }
 
-.auth-brand-mark {
-  display: grid;
-  width: 35px;
-  height: 35px;
-  place-items: center;
-  color: #fff;
-  background: #1e2b3a;
-  border-radius: 11px;
-  font-size: 10px;
-  letter-spacing: 0.04em;
+.auth-brand .brand-logo {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--ink);
 }
 
 .auth-form-content {

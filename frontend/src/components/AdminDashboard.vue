@@ -64,6 +64,15 @@ export default {
         this.errorMessage = 'L’équipe n’a pas pu être créée.'
       }
     },
+    async deleteTeam(teamId) {
+      if (!window.confirm('Confirmer la suppression de cette équipe ?')) return
+      try {
+        await api.deleteTeam(teamId)
+        await this.loadData()
+      } catch (error) {
+        this.errorMessage = 'Impossible de supprimer cette équipe.'
+      }
+    },
     async changeRole(userId, newRole) {
       if (!window.confirm(`Confirmer le changement de rôle vers ${newRole} ?`)) return
       try {
@@ -111,7 +120,7 @@ export default {
         <section class="admin-card team-management-card">
           <div class="card-heading"><div><p class="card-kicker">ORGANISATION</p><h2>Créer une équipe</h2></div><span class="card-count">{{ teams.length }} équipes</span></div>
           <form class="team-form" @submit.prevent="createTeam"><input v-model="newTeamName" required type="text" placeholder="Nom de l’équipe"><select v-model="newTeamManagerId" required><option disabled value="">Choisir un manager</option><option v-for="manager in managers" :key="manager.id" :value="manager.id">{{ manager.name }}</option></select><button class="action-link" type="submit">Créer</button></form>
-          <ul class="admin-list compact-list"><li v-for="team in teams" :key="team.id"><div><strong>{{ team.name }}</strong><span>{{ team.members.length }} membre{{ team.members.length > 1 ? 's' : '' }}</span></div><span class="card-count">Manager #{{ team.manager_id }}</span></li></ul>
+          <ul class="admin-list compact-list"><li v-for="team in teams" :key="team.id"><div><strong>{{ team.name }}</strong><span>{{ team.members.length }} membre{{ team.members.length > 1 ? 's' : '' }}</span></div><div class="leave-actions"><span class="card-count" style="margin-right: 10px;">Manager #{{ team.manager_id }}</span><button type="button" class="action-link" style="color: #ed575f;" @click="deleteTeam(team.id)">Supprimer</button></div></li></ul>
         </section>
       <section class="admin-card access-card">
         <div class="card-heading"><div><p class="card-kicker">ACCÈS</p><h2>Droits et Rôles</h2></div><span class="card-count">{{ users.length }} utilisateurs</span></div>

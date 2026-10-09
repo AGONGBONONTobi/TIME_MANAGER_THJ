@@ -51,6 +51,7 @@ api.getNotifications = () => api.get('/notifications')
 api.markNotificationRead = (id) => api.patch(`/notifications/${id}/read`)
 api.getTeams = () => api.get('/teams')
 api.createTeam = (team) => api.post('/teams', { team })
+api.deleteTeam = (teamID) => api.delete(`/teams/${teamID}`)
 api.addTeamMember = (teamID, userID) => api.post(`/teams/${teamID}/members/${userID}`)
 api.removeTeamMember = (teamID, userID) => api.delete(`/teams/${teamID}/members/${userID}`)
 api.getTeamTasks = (teamID) => api.get(`/teams/${teamID}/tasks`)
@@ -79,10 +80,7 @@ api.getPendingClockCorrections = () => api.get('/clock-corrections/pending')
 api.approveClockCorrection = (id) => api.post(`/clock-corrections/${id}/approve`)
 api.rejectClockCorrection = (id) => api.post(`/clock-corrections/${id}/reject`)
 
-// Bat-Signal
-api.getBatSignalStatus = () => api.get('/bat-signal/status')
-api.triggerBatSignal = (message) => api.post('/bat-signal/trigger', { message })
-api.clearBatSignal = () => api.delete('/bat-signal/trigger')
+
 
 // Pointage d'équipe
 api.clockTeam = (teamID) => api.post(`/manager/teams/${teamID}/clock`)

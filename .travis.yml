@@ -46,7 +46,7 @@ jobs:
         - CI=true
       script:
         - cd frontend
-        - npm ci
+        - npm install
         - npm test
 
     # ─── Build & push (main only) ──────────────────────────────

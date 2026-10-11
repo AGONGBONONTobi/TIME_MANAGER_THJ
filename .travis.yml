@@ -79,12 +79,5 @@ jobs:
         - echo "$SSH_KEY_BASE64" | base64 -d > /tmp/deploy_key
         - chmod 600 /tmp/deploy_key
       script:
-        # Copier le docker-compose.yml sur la VM
-        - scp -i /tmp/deploy_key -o StrictHostKeyChecking=no docker-compose.yml $VM_USER@$VM_IP:$DEPLOY_PATH/
-
-        # SSH + pull + up
-        - ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no $VM_USER@$VM_IP "
-            cd $DEPLOY_PATH &&
-            DOCKER_USER=$DOCKER_USER docker compose pull &&
-            DOCKER_USER=$DOCKER_USER docker compose up -d
-          "
+        - scp -P 2222 -i /tmp/deploy_key -o StrictHostKeyChecking=no docker-compose.yml $VM_USER@$VM_IP:$DEPLOY_PATH/
+        - ssh -p 2222 -i /tmp/deploy_key -o StrictHostKeyChecking=no $VM_USER@$VM_IP "

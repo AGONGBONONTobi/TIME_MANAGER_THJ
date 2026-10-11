@@ -80,4 +80,4 @@ jobs:
         - chmod 600 /tmp/deploy_key
       script:
         - scp -P 2222 -i /tmp/deploy_key -o StrictHostKeyChecking=no docker-compose.yml $VM_USER@$VM_IP:$DEPLOY_PATH/
-        - ssh -p 2222 -i /tmp/deploy_key -o StrictHostKeyChecking=no $VM_USER@$VM_IP "
+        - ssh -p 2222 -i /tmp/deploy_key -o StrictHostKeyChecking=no $VM_USER@$VM_IP "cd $DEPLOY_PATH && DOCKER_USER=$DOCKER_USER docker compose pull && DOCKER_USER=$DOCKER_USER docker compose up -d"

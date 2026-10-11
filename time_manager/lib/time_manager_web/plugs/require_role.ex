@@ -7,8 +7,9 @@ defmodule TimeManagerWeb.Plugs.RequireRole do
 
   def call(conn, opts) do
     roles = Keyword.get(opts, :roles, [])
+    user_role = to_string(conn.assigns.current_user.role)  # ← CONVERSION en string
 
-    if conn.assigns.current_user.role in roles do
+    if user_role in roles do
       conn
     else
       conn

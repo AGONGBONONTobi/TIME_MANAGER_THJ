@@ -83,3 +83,51 @@ for employee <- employees do
 end
 
 IO.puts("✅ Database successfully seeded with 316 users (1 Admin, 15 Managers, 300 Employees)!")
+# ═══════════════════════════════════════════
+# WORK POLICIES PAR DÉFAUT
+# ═══════════════════════════════════════════
+alias TimeManager.WorkPolicies.WorkPolicy
+alias TimeManager.Repo
+
+default_policies = [
+  %{
+    name: "Standard 35h",
+    weekly_hours: 35,
+    work_days: 5,
+    night_start: ~T[22:00:00],
+    night_end: ~T[06:00:00],
+    overtime_threshold: 35,
+    active: true
+  },
+  %{
+    name: "Cadre 40h",
+    weekly_hours: 40,
+    work_days: 5,
+    night_start: ~T[22:00:00],
+    night_end: ~T[06:00:00],
+    overtime_threshold: 40,
+    active: true
+  },
+  %{
+    name: "Temps partiel 20h",
+    weekly_hours: 20,
+    work_days: 3,
+    night_start: ~T[22:00:00],
+    night_end: ~T[06:00:00],
+    overtime_threshold: 20,
+    active: true
+  }
+]
+
+for policy_attrs <- default_policies do
+  case Repo.get_by(WorkPolicy, name: policy_attrs.name) do
+    nil ->
+      %WorkPolicy{}
+      |> WorkPolicy.changeset(policy_attrs)
+      |> Repo.insert!()
+      IO.puts("✅ Work policy créée : #{policy_attrs.name}")
+
+    _existing ->
+      IO.puts("⏭️  Work policy déjà existante : #{policy_attrs.name}")
+  end
+end

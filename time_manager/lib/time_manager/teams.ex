@@ -9,9 +9,26 @@ defmodule TimeManager.Teams do
 
   def get_team(id), do: Repo.get(Team, id) |> preload_team()
 
-  def create_team(attrs), do: %Team{} |> Team.changeset(attrs) |> Repo.insert()
+  def create_team(attrs) do
+  %Team{}
+  |> Team.changeset(attrs)
+  |> Repo.insert()
+  |> case do
+    {:ok, team} -> {:ok, preload_team(team)}
+    error -> error
+  end
+end
 
-  def update_team(%Team{} = team, attrs), do: team |> Team.changeset(attrs) |> Repo.update()
+def update_team(%Team{} = team, attrs) do
+  team
+  |> Team.changeset(attrs)
+  |> Repo.update()
+  |> case do
+    {:ok, updated} -> {:ok, preload_team(updated)}
+    error -> error
+  end
+end
+
 
   def delete_team(%Team{} = team), do: Repo.delete(team)
 

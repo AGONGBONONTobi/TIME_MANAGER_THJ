@@ -42,7 +42,8 @@ export default {
         writeAuthUser({
           id: user.id,
           username: user.username || user.email || 'Utilisateur',
-          role: user.role
+          role: user.role,
+          onboarded_at: user.onboarded_at || null
         })
 
         this.$router.push('/dashboard')

@@ -99,7 +99,8 @@ end
       role: user.role,
       status: user.status,
       contract_start: user.contract_start,
-      contract_end: user.contract_end
+      contract_end: user.contract_end,
+      onboarded_at: user.onboarded_at
     }
   end
 

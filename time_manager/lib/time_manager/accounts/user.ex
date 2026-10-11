@@ -11,6 +11,7 @@ defmodule TimeManager.Accounts.User do
     field :status, :string, default: "active"
     field :contract_start, :date
     field :contract_end, :date
+    field :onboarded_at, :utc_datetime
 
     timestamps(type: :utc_datetime)
     has_many :clocks, TimeManager.Clocking.Clock, on_delete: :delete_all

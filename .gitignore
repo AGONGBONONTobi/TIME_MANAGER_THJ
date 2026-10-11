@@ -1,2 +1,7 @@
 .env
 node_modules/
+
+# Fichiers temporaires / locaux
+nginx.conf
+influxdata-archive_compat.key
+FETCH_HEAD

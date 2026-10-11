@@ -63,6 +63,22 @@ defmodule TimeManagerWeb.AuthController do
     end
   end
 
+  def complete_onboarding(conn, _params) do
+  user = conn.assigns.current_user
+  
+  case TimeManager.Accounts.mark_onboarded(user) do
+    {:ok, updated_user} ->
+      conn
+      |> put_status(:ok)
+      |> json(%{data: %{id: updated_user.id, onboarded_at: updated_user.onboarded_at}})
+
+    {:error, reason} ->
+      conn
+      |> put_status(:unprocessable_entity)
+      |> json(%{error: "Failed to complete onboarding", details: inspect(reason)})
+  end
+end
+  
   def sign_out(conn, _params) do
     conn
     |> delete_resp_cookie("auth_token", path: "/")

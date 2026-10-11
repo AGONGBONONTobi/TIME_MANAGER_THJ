@@ -57,8 +57,8 @@ defmodule TimeManagerWeb.ManagerController do
     night_seconds = Enum.reduce(completed, 0, fn wt, acc ->
       acc + night_seconds_for(wt)
     end)
-
-    normal_seconds = total_seconds - night_seconds
+    
+    _normal_seconds = total_seconds - night_seconds
 
     total_hours = total_seconds / 3600.0
     overtime_hours = max(total_hours - 40.0, 0.0)

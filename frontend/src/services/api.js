@@ -88,4 +88,6 @@ api.clockTeam = (teamID) => api.post(`/manager/teams/${teamID}/clock`)
 // Paie avancée
 api.getPayrollSummary = (userID) => api.get(`/manager/users/${userID}/payroll`)
 
+api.completeOnboarding = () => api.post('/auth/complete_onboarding')
+
 export default api

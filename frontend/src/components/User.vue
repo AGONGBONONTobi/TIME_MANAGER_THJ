@@ -1,11 +1,24 @@
 <script>
 import api from '../services/api'
 import { readAuthUser } from '../utils/auth'
+import OnboardingWizard from './OnboardingWizard.vue'
 
 export default {
   name: 'UserPage',
+  components: { OnboardingWizard },
   data() {
-    return { userId: null, user: null, workPolicy: null, now: new Date(), workingTimes: [], isLoading: true, isClocking: false, errorMessage: '', timerId: null }
+    return {
+      userId: null,
+      user: null,
+      workPolicy: null,
+      now: new Date(),
+      workingTimes: [],
+      isLoading: true,
+      isClocking: false,
+      errorMessage: '',
+      timerId: null,
+      showOnboarding: false
+    }
   },
   computed: {
     currentUser() { return readAuthUser() },
@@ -46,6 +59,11 @@ export default {
     }
     this.loadWorkingTimes()
     this.timerId = window.setInterval(() => { this.now = new Date() }, 1000)
+
+    // Onboarding au premier login
+    if (authUser && !authUser.onboarded_at) {
+      setTimeout(() => { this.showOnboarding = true }, 800)
+    }
   },
   beforeUnmount() { window.clearInterval(this.timerId) },
   methods: {
@@ -81,13 +99,13 @@ export default {
 
       this.isLoading = true; this.errorMessage = ''
       try { const response = await api.getWorkingTimes(this.userId); this.workingTimes = (response.data.data || []).sort((a, b) => new Date(b.start) - new Date(a.start)) }
-      catch (error) { this.errorMessage = 'Impossible de charger les pointages. Vérifiez que l’API est démarrée.'; console.error(error) }
+      catch (error) { this.errorMessage = 'Impossible de charger les pointages. Vérifiez que l\'API est démarrée.'; console.error(error) }
       finally { this.isLoading = false }
     },
     async toggleClock() {
       this.isClocking = true; this.errorMessage = ''
       try { await api.clockInOut(this.userId); await this.loadWorkingTimes() }
-      catch (error) { this.errorMessage = error.response?.data?.error === 'already clocked in' ? 'Une session est déjà en cours.' : 'Le pointage n’a pas pu être enregistré.' }
+      catch (error) { this.errorMessage = error.response?.data?.error === 'already clocked in' ? 'Une session est déjà en cours.' : 'Le pointage n\'a pas pu être enregistré.' }
       finally { this.isClocking = false }
     },
     durationInMinutes(session) { return Math.max(0, Math.round((new Date(session.end || this.now) - new Date(session.start)) / 60000)) },
@@ -119,7 +137,24 @@ export default {
     isNightSession(session) { return this.nightMinutesForSession(session) > 0 },
     formatSessionDate(value) { return new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(value)) },
     formatSessionTime(value) { return new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }).format(new Date(value)) },
-    formatDuration(session) { const minutes = this.durationInMinutes(session); return minutes >= 60 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m` : `${minutes} min` }
+    formatDuration(session) { const minutes = this.durationInMinutes(session); return minutes >= 60 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m` : `${minutes} min` },
+    async completeOnboarding() {
+      try {
+        await api.completeOnboarding()
+        this.showOnboarding = false
+        const user = JSON.parse(localStorage.getItem('auth_user') || '{}')
+        user.onboarded_at = new Date().toISOString()
+        localStorage.setItem('auth_user', JSON.stringify(user))
+      } catch (error) {
+        console.error('Erreur onboarding:', error)
+        this.showOnboarding = false
+      }
+    },
+    skipOnboarding() {
+      if (window.confirm('Es-tu sûr de vouloir passer le tutoriel ?')) {
+        this.completeOnboarding()
+      }
+    }
   }
 }
 </script>
@@ -136,6 +171,14 @@ export default {
     <section class="activity-chart"><div class="chart-header"><div><p class="card-kicker">RYTHME DE LA SEMAINE</p><h2>Activité utilisateur</h2></div><span class="chart-menu" aria-hidden="true">···</span></div><div class="chart-canvas"><svg viewBox="0 0 620 180" role="img" aria-label="Activité de la semaine"><line v-for="line in [30, 86, 142]" :key="line" x1="34" :y1="line" x2="586" :y2="line" class="chart-grid-line" /><text v-for="(label, index) in ['0h', '4h', '8h']" :key="label" x="0" :y="146 - index * 56" class="chart-axis-label">{{ label }}</text><polyline :points="chartLine(chartWorked)" class="chart-line worked" /><polyline :points="targetLine" class="chart-line target" /><polyline :points="chartLine(chartNight)" class="chart-line night" /><text v-for="(label, index) in ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']" :key="label" :x="27 + index * 83" y="169" class="chart-day-label">{{ label }}</text></svg></div><ul class="chart-data sr-only"><li v-for="(label, index) in chartDayLabels" :key="label">{{ label }} : {{ chartWorked[index] }} heure(s) travaillée(s), dont {{ chartNight[index] }} heure(s) de nuit.</li></ul><div class="chart-legend"><span><i class="worked" aria-hidden="true"></i>Heures travaillées</span><span><i class="target" aria-hidden="true"></i>Objectif journalier</span><span><i class="night" aria-hidden="true"></i>Heures de nuit</span></div></section>
     <section class="weekly-section"><div class="section-title"><div><p class="card-kicker">STATISTIQUES DE LA SEMAINE</p><h2>Une vue claire de vos heures</h2></div></div><div class="weekly-grid"><article class="weekly-card"><div class="stat-accent blue"></div><span>Heures travaillées</span><strong>{{ weekHoursLabel }}</strong><small>Cette semaine</small></article><article class="weekly-card"><div class="stat-accent violet"></div><span>Heures de nuit</span><strong>{{ nightHoursLabel }}</strong><small>{{ nightWindowLabel }}</small></article><article class="weekly-card"><div class="stat-accent amber"></div><span>Heures d'astreinte</span><strong>Non configuré</strong><small>Politique absente</small></article><article class="weekly-card"><div class="stat-accent" :class="overtimeMinutes ? 'green' : 'gray'"></div><span>Solde d'heures</span><strong>{{ balanceLabel }}</strong><small>{{ overtimeMinutes ? 'À payer' : 'À récupérer' }}</small></article></div></section>
     <section class="history-section"><div class="section-title"><div><p class="card-kicker">ACTIVITÉ RÉCENTE</p><h2>Vos derniers pointages</h2></div><button class="refresh-link" type="button" :disabled="isLoading" @click="loadWorkingTimes">Actualiser <span>↻</span></button></div><div v-if="isLoading" class="history-placeholder">Chargement des pointages…</div><div v-else-if="recentSessions.length" class="table-wrap"><div class="session-table session-table-head"><span>Date</span><span>Début</span><span>Fin</span><span>Durée</span><span>Type</span><span>État</span></div><div v-for="session in recentSessions" :key="session.id" class="session-table"><span class="table-date">{{ formatSessionDate(session.start) }}</span><span>{{ formatSessionTime(session.start) }}</span><span>{{ session.end ? formatSessionTime(session.end) : '—' }}</span><span class="table-duration">{{ formatDuration(session) }}</span><span><b class="type-badge" :class="{ night: isNightSession(session) }"><i></i>{{ isNightSession(session) ? 'Nuit' : 'Jour' }}</b></span><span><b class="row-status" :class="{ ongoing: !session.end }">{{ session.end ? 'Terminé' : 'En cours' }}</b></span></div></div><div v-else class="empty-history"><span class="empty-mark"></span><div><strong>Aucun pointage récent</strong><p>Votre historique apparaîtra ici après votre première session.</p></div></div></section>
+
+    <OnboardingWizard
+      v-if="showOnboarding"
+      :user-name="displayName"
+      :user-role="currentUser?.role"
+      @complete="completeOnboarding"
+      @skip="skipOnboarding"
+    />
   </section>
 </template>
 

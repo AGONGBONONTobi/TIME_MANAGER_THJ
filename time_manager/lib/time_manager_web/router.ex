@@ -37,6 +37,7 @@ defmodule TimeManagerWeb.Router do
 
     scope "/auth" do
       pipe_through [:require_auth, :require_csrf]
+      post("/complete_onboarding", AuthController, :complete_onboarding)   # ← AJOUTER
       post "/sign_out", AuthController, :sign_out
     end
 

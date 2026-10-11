@@ -12,6 +12,12 @@ defmodule TimeManager.Accounts do
     Repo.all(User)
   end
 
+  def mark_onboarded(user) do
+    user
+    |> Ecto.Changeset.change(onboarded_at: DateTime.utc_now())
+    |> Repo.update()
+  end
+
   def get_users_by_filters(params) do
     query = from u in User
 
@@ -77,4 +83,5 @@ defmodule TimeManager.Accounts do
   def change_user(%User{} = user, attrs \\ %{}) do
     User.changeset(user, attrs)
   end
+
 end

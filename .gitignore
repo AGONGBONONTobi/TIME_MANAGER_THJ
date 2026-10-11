@@ -5,3 +5,4 @@ node_modules/
 nginx.conf
 influxdata-archive_compat.key
 FETCH_HEAD
+*.bak

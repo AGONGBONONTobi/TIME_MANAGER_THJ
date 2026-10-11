@@ -57,5 +57,25 @@ defmodule TimeManager.AccountsTest do
       user = user_fixture()
       assert %Ecto.Changeset{} = Accounts.change_user(user)
     end
+
+    test "mark_onboarded/1 stores a second-precision timestamp" do
+      user = user_fixture()
+
+      assert {:ok, updated_user} = Accounts.mark_onboarded(user)
+      assert %DateTime{} = updated_user.onboarded_at
+      assert updated_user.onboarded_at.microsecond == {0, 0}
+    end
+
+    test "register_user/1 always creates an employee" do
+      assert {:ok, user} =
+               Accounts.register_user(%{
+                 username: "public-user",
+                 email: "public-user@example.com",
+                 password: "password123",
+                 role: "admin"
+               })
+
+      assert user.role == "employee"
+    end
   end
 end

@@ -1,6 +1,6 @@
 <script>
 import api from '../services/api'
-import { readAuthUser } from '../utils/auth'
+import { readAuthUser, writeAuthUser } from '../utils/auth'
 import OnboardingWizard from './OnboardingWizard.vue'
 
 export default {
@@ -142,12 +142,10 @@ export default {
       try {
         await api.completeOnboarding()
         this.showOnboarding = false
-        const user = JSON.parse(localStorage.getItem('auth_user') || '{}')
-        user.onboarded_at = new Date().toISOString()
-        localStorage.setItem('auth_user', JSON.stringify(user))
+        writeAuthUser({ ...readAuthUser(), onboarded_at: new Date().toISOString() })
       } catch (error) {
         console.error('Erreur onboarding:', error)
-        this.showOnboarding = false
+        this.errorMessage = 'Impossible de finaliser le tutoriel. Vérifiez votre connexion puis réessayez.'
       }
     },
     skipOnboarding() {

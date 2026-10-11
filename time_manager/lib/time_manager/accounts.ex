@@ -14,7 +14,7 @@ defmodule TimeManager.Accounts do
 
   def mark_onboarded(user) do
     user
-    |> Ecto.Changeset.change(onboarded_at: DateTime.utc_now())
+    |> Ecto.Changeset.change(onboarded_at: DateTime.utc_now() |> DateTime.truncate(:second))
     |> Repo.update()
   end
 

@@ -34,15 +34,14 @@ defmodule TimeManager.Accounts.User do
   def registration_changeset(user, attrs) do
     changeset =
       user
-      |> cast(attrs, [:username, :email, :password, :role])
+      |> cast(attrs, [:username, :email, :password])
       |> validate_required([:username, :email, :password])
       |> validate_length(:password, min: 8)
       |> validate_format(:email, ~r/^[^\s]+@[^\s]+\.[^\s]+$/)
-      |> validate_inclusion(:role, ["employee", "manager", "admin"])
       |> unique_constraint(:email)
 
     changeset
-    |> put_change(:role, get_field(changeset, :role) || "employee")
+    |> put_change(:role, "employee")
     |> hash_password()
   end
 

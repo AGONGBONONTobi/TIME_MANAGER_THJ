@@ -26,6 +26,27 @@ defmodule TimeManager.WorkingTimes do
     |> Repo.all()
   end
 
+  def count_night_sessions(user_id, week_start, now) do
+    list_for_user(user_id)
+    |> Enum.count(fn working_time ->
+      working_time.end &&
+        DateTime.compare(working_time.end, week_start) != :lt &&
+        DateTime.compare(working_time.start, now) != :gt &&
+        overlaps_night?(working_time.start, working_time.end)
+    end)
+  end
+
+  defp overlaps_night?(start_time, end_time) do
+    Date.range(DateTime.to_date(start_time), DateTime.to_date(end_time))
+    |> Enum.any?(fn date ->
+      night_start = DateTime.new!(date, ~T[22:00:00], "Etc/UTC")
+      night_end = DateTime.add(night_start, 8 * 60 * 60, :second)
+
+      DateTime.compare(start_time, night_end) == :lt and
+        DateTime.compare(end_time, night_start) == :gt
+    end)
+  end
+
   def create_for_user(user_id, attrs) do
     case Repo.get(TimeManager.Accounts.User, user_id) do
       nil -> {:error, :user_not_found}

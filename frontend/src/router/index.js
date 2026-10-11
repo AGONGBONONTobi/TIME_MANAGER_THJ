@@ -9,6 +9,8 @@ import Authentication from '../components/Authentication.vue'
 import Register from '../components/Register.vue'
 import Dashboard from '../components/Dashboard.vue'
 import Unauthorized from '../components/Unauthorized.vue'
+import Notifications from '../components/Notifications.vue'
+import Profile from '../components/Profile.vue'
 import { readAuthUser } from '../utils/auth'
 
 const routes = [
@@ -52,6 +54,8 @@ const routes = [
     component: AdminDashboard,
     meta: { requiresAuth: true, roles: ['admin'] }
   },
+  { path: '/notifications', name: 'notifications', component: Notifications, meta: { requiresAuth: true } },
+  { path: '/profile', name: 'profile', component: Profile, meta: { requiresAuth: true } },
   {
     path: '/unauthorized',
     name: 'unauthorized',

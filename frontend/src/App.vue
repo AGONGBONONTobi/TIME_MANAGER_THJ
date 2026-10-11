@@ -16,6 +16,7 @@ export default {
       lastDashboard: 'dashboard',
       online: isOnline(),
       pendingCount: 0,
+      unreadNotifications: 0,
       stopNetworkMonitoring: null
     }
   },
@@ -115,6 +116,17 @@ export default {
       if (this.online) synchronisePendingEvents()
       this.refreshSyncState()
     }
+    ,
+    async refreshNotifications() {
+      if (!this.isAuthenticated) return
+      try {
+        const response = await api.getNotifications()
+        const items = response.data?.data || []
+        this.unreadNotifications = items.filter((item) => !item.read_at).length
+      } catch (error) {
+        if (error?.response?.status !== 401) console.warn('Notifications indisponibles.', error)
+      }
+    }
   },
   mounted() {
     window.addEventListener('keydown', this.handleEscape)
@@ -122,6 +134,7 @@ export default {
       document.documentElement.classList.add('theme-dark');
     }
     this.refreshCurrentUser()
+    this.refreshNotifications()
     this.stopNetworkMonitoring = initialiseNetworkMonitoring()
     window.addEventListener('time-manager-network', this.handleNetwork)
     window.addEventListener('time-manager-sync', this.refreshSyncState)
@@ -170,9 +183,10 @@ export default {
             <span aria-hidden="true">{{ isDarkMode ? '☀️' : '🌙' }}</span>
             <span>{{ isDarkMode ? 'Clair' : 'Sombre' }}</span>
           </button>
+          <router-link v-if="isAuthenticated" class="notification-button" to="/notifications" aria-label="Notifications"><span class="bell" aria-hidden="true">♧</span><b v-if="unreadNotifications">{{ unreadNotifications > 9 ? '9+' : unreadNotifications }}</b></router-link>
           <button v-if="isAuthenticated" class="profile-button" type="button" :aria-expanded="isProfileOpen" aria-controls="profile-menu" @click="isProfileOpen = !isProfileOpen"><span class="avatar avatar-small" aria-hidden="true">{{ userInitials }}</span><span class="profile-copy"><strong>{{ currentUser.username || 'Utilisateur' }}</strong><small>{{ userRoleLabel }}</small></span><span class="profile-chevron" aria-hidden="true">⌄</span></button>
           <router-link v-else class="signin-link" to="/sign_in">Connexion</router-link>
-          <div v-if="isProfileOpen" id="profile-menu" class="profile-menu"><strong>{{ currentUser.username || 'Utilisateur' }}</strong><span>{{ userRoleLabel }}</span><button type="button" @click="signOut">Déconnexion</button></div>
+          <div v-if="isProfileOpen" id="profile-menu" class="profile-menu"><strong>{{ currentUser.username || 'Utilisateur' }}</strong><span>{{ userRoleLabel }}</span><router-link to="/profile" @click="isProfileOpen = false">Profil</router-link><button type="button" @click="signOut">Déconnexion</button></div>
         </div>
       </header>
       <main id="main-content" class="app-content" tabindex="-1"><router-view /></main>

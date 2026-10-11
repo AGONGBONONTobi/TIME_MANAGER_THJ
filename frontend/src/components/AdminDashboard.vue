@@ -10,6 +10,9 @@ export default {
       users: [],
       leaveRequests: [],
       payrollRules: [],
+      isPayrollRuleModalOpen: false,
+      editingPayrollRuleId: null,
+      payrollRuleForm: { name: '', rule_type: 'night', value: '', active: true },
       fatigueAlerts: [],
       isLoading: true,
       errorMessage: '',
@@ -20,7 +23,11 @@ export default {
       roleFilter: '',
       statusFilter: '',
       currentPage: 1,
-      perPage: 10
+      perPage: 10,
+      isUserModalOpen: false,
+      teamFilter: '',
+      sortBy: 'username',
+      newUser: { username: '', email: '', password: '', role: 'employee', status: 'active', contract_start: '', contract_end: '' }
     }
   },
   computed: {
@@ -57,7 +64,16 @@ export default {
         result = result.filter(u => (u.status || 'active') === this.statusFilter)
       }
 
-      return result
+      if (this.teamFilter) {
+        const team = this.teams.find((item) => String(item.id) === String(this.teamFilter))
+        const memberIds = new Set((team?.members || []).map((member) => String(member.id || member.user_id)))
+        result = result.filter((user) => memberIds.has(String(user.id)))
+      }
+
+      return [...result].sort((a, b) => {
+        if (this.sortBy === 'contract_start') return String(a.contract_start || '').localeCompare(String(b.contract_start || ''))
+        return String(a.username || '').localeCompare(String(b.username || ''), 'fr')
+      })
     },
     // Pagination
     totalPages() {
@@ -74,6 +90,15 @@ export default {
     }
   },
   methods: {
+    openUserModal() { this.isUserModalOpen = true },
+    async createAdminUser() {
+      try {
+        const response = await api.createUser(this.newUser)
+        this.users.push(response.data?.data || response.data?.user)
+        this.isUserModalOpen = false
+        this.newUser = { username: '', email: '', password: '', role: 'employee', status: 'active', contract_start: '', contract_end: '' }
+      } catch { this.errorMessage = 'La création de l’utilisateur a échoué.' }
+    },
     async loadData() {
       this.isLoading = true
       this.errorMessage = ''
@@ -153,6 +178,43 @@ export default {
         this.errorMessage = 'Impossible de mettre à jour les informations de cet employé.'
       }
     },
+    openPayrollRuleModal(rule = null) {
+      this.editingPayrollRuleId = rule?.id || null
+      this.payrollRuleForm = rule
+        ? { name: rule.name, rule_type: rule.rule_type, value: rule.value, active: rule.active }
+        : { name: '', rule_type: 'night', value: '', active: true }
+      this.isPayrollRuleModalOpen = true
+    },
+    closePayrollRuleModal() {
+      this.isPayrollRuleModalOpen = false
+      this.editingPayrollRuleId = null
+    },
+    async savePayrollRule() {
+      if (!this.payrollRuleForm.name.trim() || this.payrollRuleForm.value === '') return
+      try {
+        const payload = {
+          name: this.payrollRuleForm.name.trim(),
+          rule_type: this.payrollRuleForm.rule_type,
+          value: Number(this.payrollRuleForm.value),
+          active: Boolean(this.payrollRuleForm.active)
+        }
+        if (this.editingPayrollRuleId) await api.updatePayrollRule(this.editingPayrollRuleId, payload)
+        else await api.createPayrollRule(payload)
+        this.closePayrollRuleModal()
+        await this.loadData()
+      } catch (error) {
+        this.errorMessage = 'La règle de paie n’a pas pu être enregistrée.'
+      }
+    },
+    async deletePayrollRule(rule) {
+      if (!window.confirm(`Supprimer la règle « ${rule.name} » ?`)) return
+      try {
+        await api.deletePayrollRule(rule.id)
+        await this.loadData()
+      } catch (error) {
+        this.errorMessage = 'La règle de paie n’a pas pu être supprimée.'
+      }
+    },
     // Helpers UI
     roleBadgeClass(role) {
       return {
@@ -187,6 +249,8 @@ export default {
       this.searchQuery = ''
       this.roleFilter = ''
       this.statusFilter = ''
+      this.teamFilter = ''
+      this.sortBy = 'username'
       this.currentPage = 1
     }
   },
@@ -240,7 +304,7 @@ export default {
           <p class="card-kicker">ACCÈS</p>
           <h2>Droits et Rôles</h2>
         </div>
-        <span class="card-count">{{ filteredUsers.length }} / {{ users.length }} utilisateurs</span>
+        <div class="card-heading-actions"><span class="card-count">{{ filteredUsers.length }} / {{ users.length }} utilisateurs</span><button class="action-button" type="button" @click="openUserModal">+ Ajouter un utilisateur</button></div>
       </div>
 
       <!-- Filtres -->
@@ -263,8 +327,10 @@ export default {
           <option value="suspended">Suspendu</option>
           <option value="terminated">Terminé</option>
         </select>
+        <select v-model="teamFilter" class="filter-select"><option value="">Toutes les équipes</option><option v-for="team in teams" :key="team.id" :value="team.id">{{ team.name }}</option></select>
+        <select v-model="sortBy" class="filter-select"><option value="username">Trier par nom</option><option value="contract_start">Trier par embauche</option></select>
         <button
-          v-if="searchQuery || roleFilter || statusFilter"
+          v-if="searchQuery || roleFilter || statusFilter || teamFilter"
           @click="resetFilters"
           class="filter-reset"
         >
@@ -345,6 +411,7 @@ export default {
         </button>
       </div>
     </section>
+    <div v-if="isUserModalOpen" class="modal-backdrop" @click.self="isUserModalOpen = false"><form class="modal-card" @submit.prevent="createAdminUser"><div class="card-heading"><h2>Nouvel utilisateur</h2><button class="modal-close" type="button" @click="isUserModalOpen = false">×</button></div><label class="modal-field">Nom d’utilisateur<input v-model="newUser.username" required></label><label class="modal-field">Email<input v-model="newUser.email" type="email" required></label><label class="modal-field">Mot de passe<input v-model="newUser.password" type="password" minlength="8" required></label><label class="modal-field">Rôle<select v-model="newUser.role"><option value="employee">Employé</option><option value="manager">Manager</option><option value="admin">Admin</option></select></label><label class="modal-field">Statut<select v-model="newUser.status"><option value="active">Actif</option><option value="inactive">Inactif</option><option value="on_leave">En congé</option><option value="suspended">Suspendu</option><option value="terminated">Terminé</option></select></label><div class="modal-actions"><button class="refresh-button" type="button" @click="isUserModalOpen = false">Annuler</button><button class="action-button" type="submit">Créer</button></div></form></div>
 
     <!-- Grille : équipes + absences -->
     <div class="admin-grid">
@@ -422,16 +489,29 @@ export default {
     <section class="admin-card payroll-card">
       <div class="card-heading">
         <div><p class="card-kicker">PAIE</p><h2>Règles de majoration</h2></div>
-        <span class="card-count">{{ payrollRules.length }} règles</span>
+        <div class="card-heading-actions"><span class="card-count">{{ payrollRules.length }} règles</span><button class="action-button" type="button" @click="openPayrollRuleModal()">+ Ajouter une règle</button></div>
       </div>
       <div v-if="payrollRules.length" class="rules-grid">
-        <article v-for="rule in payrollRules" :key="rule.label" class="rule-card" :class="rule.tone">
+        <article v-for="rule in payrollRules" :key="rule.id" class="rule-card" :class="rule.tone">
           <span>{{ rule.label }}</span>
           <strong>{{ rule.value }}</strong>
+          <small>{{ rule.active ? 'Active' : 'Inactive' }}</small>
+          <div class="rule-actions"><button type="button" class="action-link" @click="openPayrollRuleModal(rule)">Modifier</button><button type="button" class="action-link danger" @click="deletePayrollRule(rule)">Supprimer</button></div>
         </article>
       </div>
       <p v-else class="empty-state">Aucune règle de paie définie. Contactez le service comptabilité.</p>
     </section>
+
+    <div v-if="isPayrollRuleModalOpen" class="modal-backdrop" @click.self="closePayrollRuleModal">
+      <form class="modal-card" @submit.prevent="savePayrollRule">
+        <div class="card-heading"><div><p class="card-kicker">PAIE</p><h2>{{ editingPayrollRuleId ? 'Modifier la règle' : 'Ajouter une règle' }}</h2></div><button class="modal-close" type="button" aria-label="Fermer" @click="closePayrollRuleModal">×</button></div>
+        <label class="modal-field">Nom<input v-model="payrollRuleForm.name" required type="text" placeholder="Majoration de nuit"></label>
+        <label class="modal-field">Type<select v-model="payrollRuleForm.rule_type"><option value="night">Nuit</option><option value="overtime">Heures supplémentaires</option><option value="holiday">Jour férié</option><option value="weekend">Week-end</option></select></label>
+        <label class="modal-field">Valeur<input v-model.number="payrollRuleForm.value" required min="0" step="0.01" type="number" placeholder="1.25"></label>
+        <label class="modal-checkbox"><input v-model="payrollRuleForm.active" type="checkbox"> Règle active</label>
+        <div class="modal-actions"><button class="refresh-button" type="button" @click="closePayrollRuleModal">Annuler</button><button class="action-button" type="submit">{{ editingPayrollRuleId ? 'Enregistrer' : 'Créer la règle' }}</button></div>
+      </form>
+    </div>
 
     <!-- Vigilance fatigue -->
     <section class="admin-card fatigue-card">
@@ -475,6 +555,9 @@ export default {
 /* Carte */
 .admin-card { padding: 1.35rem; background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 30px rgba(37, 33, 27, .05); margin-bottom: 18px; }
 .card-heading { display: flex; align-items: start; justify-content: space-between; gap: 1rem; }
+.card-heading-actions, .modal-actions, .rule-actions { display: flex; align-items: center; gap: .6rem; }
+.action-button { padding: .55rem .8rem; color: #fff; background: #786be7; border: 1px solid #786be7; border-radius: 7px; font-size: .72rem; font-weight: 800; cursor: pointer; }
+.action-button:hover { background: #6658ce; }
 .card-heading h2 { margin: 0; font-size: 1.15rem; letter-spacing: -.04em; }
 .card-count { color: var(--muted); font-size: .7rem; white-space: nowrap; }
 
@@ -543,6 +626,16 @@ export default {
 .rule-card { padding: 1rem; border-radius: 8px; border-top: 3px solid; }
 .rule-card span { color: var(--muted); font-size: .72rem; display: block; }
 .rule-card strong { margin-top: .5rem; font-size: 1.35rem; display: block; }
+.rule-card small { display: block; margin-top: .4rem; color: var(--muted); font-size: .68rem; }
+.rule-actions { margin-top: .8rem; }
+.action-link.danger { color: #b6444d; }
+.modal-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 1rem; background: rgba(20, 20, 25, .45); }
+.modal-card { display: grid; gap: 1rem; width: min(100%, 460px); padding: 1.4rem; background: #fff; border-radius: 12px; box-shadow: 0 20px 60px rgba(0, 0, 0, .2); }
+.modal-close { color: var(--muted); background: transparent; border: 0; font-size: 1.5rem; cursor: pointer; }
+.modal-field { display: grid; gap: .4rem; color: var(--muted); font-size: .75rem; font-weight: 800; }
+.modal-field input, .modal-field select { min-height: 40px; padding: .55rem .65rem; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 7px; font-size: .85rem; }
+.modal-checkbox { display: flex; align-items: center; gap: .5rem; color: var(--ink); font-size: .8rem; }
+.modal-actions { justify-content: flex-end; margin-top: .4rem; }
 .rule-card.violet { color: #6658ce; background: #f3f1ff; border-color: #887ce8; }
 .rule-card.amber { color: #8e6818; background: #fff8df; border-color: #f0ad32; }
 .rule-card.blue { color: #3f71af; background: #eff6ff; border-color: #5796e7; }

@@ -8,6 +8,8 @@ defmodule TimeManager.Clocking do
   alias TimeManager.Clocking.Clock
   alias TimeManager.Accounts.User
   alias TimeManager.WorkingTimes.WorkingTime
+  alias TimeManager.WorkingTimes
+  alias TimeManager.Notifications
 
   def list_clocks(user_id) do
     Clock
@@ -61,8 +63,18 @@ defmodule TimeManager.Clocking do
     end)
     |> Repo.transaction()
     |> case do
-      {:ok, %{clock: clock}} -> {:ok, clock}
-      {:error, _step, reason, _changes} -> {:error, reason}
+      {:ok, %{clock: clock}} ->
+        if clock.status == false do
+          now = DateTime.utc_now()
+          week_start = DateTime.add(now, -7 * 24 * 60 * 60, :second)
+          night_count = WorkingTimes.count_night_sessions(user.id, week_start, now)
+          Notifications.notify_night_threshold(user.id, night_count, week_start)
+        end
+
+        {:ok, clock}
+
+      {:error, _step, reason, _changes} ->
+        {:error, reason}
     end
   end
 
@@ -121,6 +133,7 @@ defmodule TimeManager.Clocking do
   defp determine_status(nil), do: true
   defp determine_status(%Clock{status: true}), do: false
   defp determine_status(%Clock{status: false}), do: true
+
   # ═══════════════════════════════════════════════════════
   # CLOCK CORRECTIONS
   # ═══════════════════════════════════════════════════════
@@ -167,7 +180,12 @@ defmodule TimeManager.Clocking do
         |> Ecto.Multi.run(:soft_delete_old_clock, fn repo, _changes ->
           if correction.original_clock_id do
             old_clock = repo.get!(Clock, correction.original_clock_id)
-            repo.update(Ecto.Changeset.change(old_clock, deleted_at: DateTime.utc_now() |> DateTime.truncate(:second)))
+
+            repo.update(
+              Ecto.Changeset.change(old_clock,
+                deleted_at: DateTime.utc_now() |> DateTime.truncate(:second)
+              )
+            )
           else
             {:ok, nil}
           end

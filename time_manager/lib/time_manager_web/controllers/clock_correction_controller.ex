@@ -3,6 +3,7 @@ defmodule TimeManagerWeb.ClockCorrectionController do
   use OpenApiSpex.ControllerSpecs
 
   alias TimeManager.Clocking
+  alias TimeManager.Notifications
 
   action_fallback TimeManagerWeb.FallbackController
 
@@ -43,6 +44,12 @@ defmodule TimeManagerWeb.ClockCorrectionController do
 
     case Clocking.approve_clock_correction(id, manager_id) do
       {:ok, correction} ->
+        Notifications.notify_clock_correction_review(
+          correction.user_id,
+          "approved",
+          conn.assigns.current_user.username
+        )
+
         conn |> put_status(:ok) |> render(:show, clock_correction: correction)
 
       {:error, :not_found} ->
@@ -58,6 +65,12 @@ defmodule TimeManagerWeb.ClockCorrectionController do
 
     case Clocking.reject_clock_correction(id, manager_id) do
       {:ok, correction} ->
+        Notifications.notify_clock_correction_review(
+          correction.user_id,
+          "rejected",
+          conn.assigns.current_user.username
+        )
+
         conn |> put_status(:ok) |> render(:show, clock_correction: correction)
 
       {:error, :not_found} ->

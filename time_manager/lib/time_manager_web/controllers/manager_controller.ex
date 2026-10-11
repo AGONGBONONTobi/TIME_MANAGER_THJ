@@ -50,14 +50,16 @@ defmodule TimeManagerWeb.ManagerController do
     weekly_times = Enum.filter(working_times, &(DateTime.compare(&1.start, week_start) != :lt))
     completed = Enum.filter(weekly_times, & &1.end)
 
-    total_seconds = Enum.reduce(completed, 0, fn wt, acc ->
-      acc + DateTime.diff(wt.end, wt.start, :second)
-    end)
+    total_seconds =
+      Enum.reduce(completed, 0, fn wt, acc ->
+        acc + DateTime.diff(wt.end, wt.start, :second)
+      end)
 
-    night_seconds = Enum.reduce(completed, 0, fn wt, acc ->
-      acc + night_seconds_for(wt)
-    end)
-    
+    night_seconds =
+      Enum.reduce(completed, 0, fn wt, acc ->
+        acc + night_seconds_for(wt)
+      end)
+
     _normal_seconds = total_seconds - night_seconds
 
     total_hours = total_seconds / 3600.0
@@ -77,6 +79,39 @@ defmodule TimeManagerWeb.ManagerController do
         overtime_pay_rate: 2.0
       }
     })
+  end
+
+  def export_payroll(conn, %{"userID" => user_id}) do
+    rows =
+      WorkingTimes.list_for_user(user_id)
+      |> Enum.map(fn wt ->
+        [
+          wt.start,
+          wt.end,
+          if(wt.end, do: DateTime.diff(wt.end, wt.start, :second) / 3600, else: nil)
+        ]
+      end)
+
+    csv =
+      [["Début", "Fin", "Heures"] | rows]
+      |> Enum.map(fn row -> Enum.map_join(row, ";", &csv_cell/1) end)
+      |> Enum.join("\r\n")
+
+    conn
+    |> put_resp_content_type("text/csv", "utf-8")
+    |> put_resp_header("content-disposition", "attachment; filename=\"timesheet-#{user_id}.csv\"")
+    |> send_resp(200, "\uFEFF" <> csv)
+  end
+
+  defp csv_cell(nil), do: ""
+  defp csv_cell(%DateTime{} = value), do: csv_cell(DateTime.to_iso8601(value))
+
+  defp csv_cell(value) do
+    value = to_string(value)
+
+    if String.contains?(value, [";", "\"", "\n"]),
+      do: "\"" <> String.replace(value, "\"", "\"\"") <> "\"",
+      else: value
   end
 
   defp team_users(conn) do
@@ -144,6 +179,7 @@ defmodule TimeManagerWeb.ManagerController do
     night_end_hour = 6
 
     total_secs = DateTime.diff(e, s, :second)
+
     if total_secs <= 0 do
       0
     else
@@ -151,6 +187,7 @@ defmodule TimeManagerWeb.ManagerController do
       count_night_seconds(s, e, night_start_hour, night_end_hour)
     end
   end
+
   defp night_seconds_for(_), do: 0
 
   defp count_night_seconds(s, e, night_h_start, night_h_end) do
@@ -163,6 +200,7 @@ defmodule TimeManagerWeb.ManagerController do
       segment_end = if DateTime.compare(hour_end, e) == :gt, do: e, else: hour_end
       seconds_in_segment = DateTime.diff(segment_end, hour_start, :second)
       h = hour_start.hour
+
       if h >= night_h_start or h < night_h_end do
         acc + seconds_in_segment
       else

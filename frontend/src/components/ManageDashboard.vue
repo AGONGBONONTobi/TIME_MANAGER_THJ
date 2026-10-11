@@ -1,9 +1,11 @@
 <script>
 import api from '../services/api'
 import { readAuthUser } from '../utils/auth'
+import NightChart from './NightChart.vue'
 
 export default {
   name: 'ManagerDashboard',
+  components: { NightChart },
   data() {
     return {
       now: new Date(),
@@ -53,6 +55,17 @@ export default {
     window.clearInterval(this.timerId)
   },
   methods: {
+    async exportEmployeePayroll(employee) {
+      try {
+        const response = await api.exportPayroll(employee.id)
+        const url = URL.createObjectURL(response.data)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `timesheet-${employee.id}.csv`
+        link.click()
+        URL.revokeObjectURL(url)
+      } catch { this.errorMessage = 'Export impossible pour cet employé.' }
+    },
     async loadTeam() {
       this.isLoading = true
       this.errorMessage = ''
@@ -405,6 +418,7 @@ export default {
           </span>
           <span class="cell-actions">
             <button type="button" class="link-btn">Voir</button>
+            <button type="button" class="link-btn" @click="exportEmployeePayroll(emp)">CSV</button>
             <button
               v-if="emp.missedClock"
               type="button"
@@ -438,6 +452,7 @@ export default {
         </div>
       </div>
     </section>
+    <NightChart />
   </section>
 </template>
 
@@ -534,4 +549,3 @@ export default {
 }
 .team-clock-btn { padding: 4px 10px; color: #fff; font-size: 10px; font-weight: 700; background: #786be7; border: 0; border-radius: 99px; cursor: pointer; transition: background .15s; }.team-clock-btn:hover { background: #5f54c8; }.team-open { padding: 0; color: #786be7; background: transparent; border: 0; cursor: pointer; }.team-open:hover { text-decoration: underline; }.team-modal-backdrop { position: fixed; z-index: 60; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(20, 25, 35, .65); }.team-modal { position: relative; width: min(100%, 650px); max-height: min(88vh, 760px); overflow-y: auto; padding: 30px; background: #fff; border-radius: 16px; box-shadow: 0 24px 80px rgba(0, 0, 0, .22); }.modal-close { position: absolute; top: 12px; right: 14px; width: 34px; height: 34px; color: #7d8796; background: transparent; border: 0; font-size: 25px; cursor: pointer; }.team-modal h2 { margin: 0; color: #293140; font: 800 30px 'Manrope', sans-serif; letter-spacing: -.06em; }.team-description { margin: 8px 0 20px; color: #7d8796; font-size: 13px; line-height: 1.55; }.modal-label { color: #8a7cf0; font-size: 10px; font-weight: 800; letter-spacing: .12em; }.member-pills { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 9px; }.member-pills span { padding: 6px 10px; color: #5148a7; font-size: 11px; font-weight: 700; background: #eeedff; border-radius: 99px; }.member-pills .muted-pill { color: #8c96a5; background: #f1f3f6; }.tasks-heading { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-top: 26px; padding-top: 20px; border-top: 1px solid #edf0f4; }.tasks-heading h3 { margin: 4px 0 0; color: #293140; font: 700 18px 'Manrope', sans-serif; }.tasks-heading > span { color: #43ae76; font-size: 11px; font-weight: 700; }.task-form { display: grid; gap: 8px; margin-top: 14px; padding: 13px; background: #f8f9fc; border: 1px solid #edf0f4; border-radius: 10px; }.task-form input, .task-form textarea { width: 100%; padding: 9px 10px; color: #303847; background: #fff; border: 1px solid #e4e8ef; border-radius: 6px; font-size: 12px; resize: vertical; }.task-form-bottom { display: flex; gap: 8px; }.task-form-bottom input { flex: 1; }.task-form button { padding: 8px 12px; color: #fff; background: #786be7; border: 0; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; }.tasks-list { display: grid; gap: 8px; margin-top: 14px; }.task-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid #edf0f4; border-radius: 9px; }.task-item.completed { background: #f3fbf6; border-color: #d7efdf; }.task-check { display: grid; width: 22px; height: 22px; flex: 0 0 auto; place-items: center; color: #fff; background: #fff; border: 2px solid #b8c0cc; border-radius: 6px; cursor: pointer; }.task-item.completed .task-check { background: #43ae76; border-color: #43ae76; }.task-item > div { min-width: 0; }.task-item strong { color: #303847; font-size: 13px; }.task-item.completed strong { color: #71917b; text-decoration: line-through; }.task-item p { margin: 4px 0 0; color: #7d8796; font-size: 11px; line-height: 1.4; }.task-item small { display: block; margin-top: 6px; color: #9aa3af; font-size: 10px; }.tasks-state { margin-top: 15px; padding: 18px; color: #8c96a5; font-size: 12px; text-align: center; background: #f8f9fc; border-radius: 8px; }
 </style>
-

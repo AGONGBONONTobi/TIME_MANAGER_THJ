@@ -33,11 +33,12 @@ defmodule TimeManagerWeb.AuthController do
         else
           csrf_token = generate_csrf_token()
 
-          {:ok, jwt, _claims} = TimeManager.Token.generate_and_sign(%{
-            "user_id" => user.id,
-            "role" => user.role,
-            "csrf_token" => csrf_token
-          })
+          {:ok, jwt, _claims} =
+            TimeManager.Token.generate_and_sign(%{
+              "user_id" => user.id,
+              "role" => user.role,
+              "csrf_token" => csrf_token
+            })
 
           conn
           |> put_resp_cookie("auth_token", jwt,
@@ -64,21 +65,21 @@ defmodule TimeManagerWeb.AuthController do
   end
 
   def complete_onboarding(conn, _params) do
-  user = conn.assigns.current_user
-  
-  case TimeManager.Accounts.mark_onboarded(user) do
-    {:ok, updated_user} ->
-      conn
-      |> put_status(:ok)
-      |> json(%{data: %{id: updated_user.id, onboarded_at: updated_user.onboarded_at}})
+    user = conn.assigns.current_user
 
-    {:error, reason} ->
-      conn
-      |> put_status(:unprocessable_entity)
-      |> json(%{error: "Failed to complete onboarding", details: inspect(reason)})
+    case TimeManager.Accounts.mark_onboarded(user) do
+      {:ok, updated_user} ->
+        conn
+        |> put_status(:ok)
+        |> json(%{data: %{id: updated_user.id, onboarded_at: updated_user.onboarded_at}})
+
+      {:error, reason} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{error: "Failed to complete onboarding", details: inspect(reason)})
+    end
   end
-end
-  
+
   def sign_out(conn, _params) do
     conn
     |> delete_resp_cookie("auth_token", path: "/")
@@ -89,6 +90,24 @@ end
 
   def me(conn, _params) do
     json(conn, %{user: public_user(conn.assigns.current_user)})
+  end
+
+  def change_password(conn, %{"current_password" => current, "new_password" => new_password}) do
+    case Accounts.change_password(conn.assigns.current_user, current, new_password) do
+      {:ok, user} ->
+        json(conn, %{user: public_user(user)})
+
+      {:error, :invalid_current_password} ->
+        conn |> put_status(:unauthorized) |> json(%{error: "Ancien mot de passe incorrect."})
+
+      {:error, changeset} ->
+        conn
+        |> put_status(:unprocessable_entity)
+        |> json(%{
+          error: "Nouveau mot de passe invalide.",
+          details: Ecto.Changeset.traverse_errors(changeset, fn {message, _} -> message end)
+        })
+    end
   end
 
   defp public_user(user) do

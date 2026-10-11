@@ -37,13 +37,15 @@ defmodule TimeManagerWeb.Router do
 
     scope "/auth" do
       pipe_through [:require_auth, :require_csrf]
-      post("/complete_onboarding", AuthController, :complete_onboarding)   # ← AJOUTER
+      # ← AJOUTER
+      post("/complete_onboarding", AuthController, :complete_onboarding)
       post "/sign_out", AuthController, :sign_out
     end
 
     scope "/auth" do
       pipe_through [:require_auth]
       get "/me", AuthController, :me
+      put "/password", AuthController, :change_password
     end
 
     scope "/users" do
@@ -69,6 +71,7 @@ defmodule TimeManagerWeb.Router do
       post("/users/:userID/reminders", ManagerController, :remind)
       post("/teams/:team_id/clock", ManagerController, :team_clock)
       get("/users/:userID/payroll", ManagerController, :payroll_summary)
+      get("/users/:userID/payroll/export.csv", ManagerController, :export_payroll)
     end
 
     scope "/bat-signal" do
@@ -194,8 +197,7 @@ defmodule TimeManagerWeb.Router do
 
     get "/api/openapi", OpenApiSpex.Plug.RenderSpec, []
 
-    forward "/swagger", OpenApiSpex.Plug.SwaggerUI,
-      path: "/api/openapi"
+    forward "/swagger", OpenApiSpex.Plug.SwaggerUI, path: "/api/openapi"
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development

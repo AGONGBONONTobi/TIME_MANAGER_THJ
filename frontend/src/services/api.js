@@ -49,6 +49,7 @@ api.getManagerTeam = () => api.get('/manager/team')
 api.sendClockReminder = (userID) => api.post(`/manager/users/${userID}/reminders`)
 api.getNotifications = () => api.get('/notifications')
 api.markNotificationRead = (id) => api.patch(`/notifications/${id}/read`)
+api.changePassword = (payload) => api.put('/auth/password', payload)
 api.getTeams = () => api.get('/teams')
 api.createTeam = (team) => api.post('/teams', { team })
 api.deleteTeam = (teamID) => api.delete(`/teams/${teamID}`)
@@ -62,6 +63,9 @@ api.createLeaveRequest = (leaveRequest) => api.post('/leave-requests', { leave_r
 api.approveLeaveRequest = (id) => api.post(`/leave-requests/${id}/approve`)
 api.rejectLeaveRequest = (id) => api.post(`/leave-requests/${id}/reject`)
 api.getPayrollRules = () => api.get('/payroll-rules')
+api.createPayrollRule = (payrollRule) => api.post('/payroll-rules', { payroll_rule: payrollRule })
+api.updatePayrollRule = (ruleID, payrollRule) => api.put(`/payroll-rules/${ruleID}`, { payroll_rule: payrollRule })
+api.deletePayrollRule = (ruleID) => api.delete(`/payroll-rules/${ruleID}`)
 api.getWorkPolicies = () => api.get('/work-policies')
 api.getClocks = (userID) => api.get(`/users/${userID}/clocks`)
 api.clockInOut = (userID, payload = {}) => api.post(`/users/${userID}/clocks`, payload)
@@ -87,6 +91,7 @@ api.clockTeam = (teamID) => api.post(`/manager/teams/${teamID}/clock`)
 
 // Paie avancée
 api.getPayrollSummary = (userID) => api.get(`/manager/users/${userID}/payroll`)
+api.exportPayroll = (userID) => api.get(`/manager/users/${userID}/payroll/export.csv`, { responseType: 'blob' })
 
 api.completeOnboarding = () => api.post('/auth/complete_onboarding')
 

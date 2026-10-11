@@ -19,7 +19,7 @@ defmodule TimeManager.Accounts do
   end
 
   def get_users_by_filters(params) do
-    query = from u in User
+    query = from(u in User)
 
     query =
       if params["email"],
@@ -84,4 +84,13 @@ defmodule TimeManager.Accounts do
     User.changeset(user, attrs)
   end
 
+  def change_password(%User{} = user, current_password, new_password) do
+    if valid_password?(user, current_password) do
+      user
+      |> User.changeset(%{password: new_password})
+      |> Repo.update()
+    else
+      {:error, :invalid_current_password}
+    end
+  end
 end

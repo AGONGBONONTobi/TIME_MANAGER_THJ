@@ -2,6 +2,7 @@ defmodule TimeManagerWeb.TeamTaskController do
   use TimeManagerWeb, :controller
 
   alias TimeManager.Teams
+  alias TimeManager.Notifications
 
   def index(conn, %{"team_id" => team_id}) do
     with team when not is_nil(team) <- Teams.get_team(team_id),
@@ -16,7 +17,13 @@ defmodule TimeManagerWeb.TeamTaskController do
   def create(conn, %{"team_id" => team_id} = params) do
     with team when not is_nil(team) <- Teams.get_team(team_id),
          true <- can_manage?(conn, team),
-         {:ok, task} <- Teams.create_task(team_id, conn.assigns.current_user.id, Map.get(params, "task", params)) do
+         {:ok, task} <-
+           Teams.create_task(
+             team_id,
+             conn.assigns.current_user.id,
+             Map.get(params, "task", params)
+           ) do
+      Notifications.notify_task_created(team, task, conn.assigns.current_user.id)
       conn |> put_status(:created) |> json(%{data: task_data(task)})
     else
       nil -> send_resp(conn, :not_found, "")
@@ -45,8 +52,34 @@ defmodule TimeManagerWeb.TeamTaskController do
     end
   end
 
-  defp can_manage?(conn, team), do: conn.assigns.current_user.role == "admin" or team.manager_id == conn.assigns.current_user.id
-  defp forbidden(conn), do: conn |> put_status(:forbidden) |> json(%{error: "You can only manage tasks of your own team"})
-  defp validation_error(conn, changeset), do: conn |> put_status(:unprocessable_entity) |> json(%{error: "Invalid task", details: Ecto.Changeset.traverse_errors(changeset, fn {message, _} -> message end)})
-  defp task_data(task), do: %{id: task.id, team_id: task.team_id, created_by_id: task.created_by_id, title: task.title, description: task.description, status: task.status, due_date: task.due_date, completed_at: task.completed_at}
+  defp can_manage?(conn, team),
+    do:
+      conn.assigns.current_user.role == "admin" or team.manager_id == conn.assigns.current_user.id
+
+  defp forbidden(conn),
+    do:
+      conn
+      |> put_status(:forbidden)
+      |> json(%{error: "You can only manage tasks of your own team"})
+
+  defp validation_error(conn, changeset),
+    do:
+      conn
+      |> put_status(:unprocessable_entity)
+      |> json(%{
+        error: "Invalid task",
+        details: Ecto.Changeset.traverse_errors(changeset, fn {message, _} -> message end)
+      })
+
+  defp task_data(task),
+    do: %{
+      id: task.id,
+      team_id: task.team_id,
+      created_by_id: task.created_by_id,
+      title: task.title,
+      description: task.description,
+      status: task.status,
+      due_date: task.due_date,
+      completed_at: task.completed_at
+    }
 end

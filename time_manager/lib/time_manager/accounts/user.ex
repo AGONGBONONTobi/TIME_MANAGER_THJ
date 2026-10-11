@@ -26,7 +26,7 @@ defmodule TimeManager.Accounts.User do
     |> validate_length(:password, min: 8)
     |> validate_format(:email, ~r/^[^\s]+@[^\s]+\.[^\s]+$/)
     |> validate_inclusion(:role, ["employee", "manager", "admin"])
-    |> validate_inclusion(:status, ["active", "inactive", "on_leave"])
+    |> validate_inclusion(:status, ["active", "inactive", "on_leave", "suspended", "terminated"])
     |> unique_constraint(:email)
     |> hash_password()
   end

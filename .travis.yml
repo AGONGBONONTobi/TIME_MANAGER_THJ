@@ -13,16 +13,17 @@ env:
 
 stages:
   - name: test
-  - name: build
+  - name: build & push images
     if: type = push AND branch = main
   - name: deploy
     if: type = push AND branch = main
 
 jobs:
   include:
-    # ─── Test: backend ─────────────────────────────────────────
+
+    # ─── Test : backend (Elixir) ───────────────────────────────
     - stage: test
-      name: backend
+      name: "Test - Backend (Elixir)"
       language: minimal
       services:
         - docker
@@ -34,14 +35,14 @@ jobs:
           docker run --rm --network tm \
             -e MIX_ENV=test -e DB_HOST=pg \
             -v "$PWD/time_manager":/app -w /app \
-            elixir:1.18 \
+            elixir:1.16 \
             sh -c "mix local.hex --force && mix local.rebar --force && mix deps.get && mix test"
 
-    # ─── Test: frontend ────────────────────────────────────────
+    # ─── Test : frontend (Vue.js) ──────────────────────────────
     - stage: test
-      name: frontend
+      name: "Test - Frontend (Vue.js)"
       language: node_js
-      node_js: '22'
+      node_js: "22"
       env:
         - CI=true
       script:
@@ -49,26 +50,39 @@ jobs:
         - npm install
         - npm test
 
-    # ─── Build & push (main only) ──────────────────────────────
+
     - stage: build & push images
+      name: "Build & Push Docker images"
+      language: minimal
+      services:
+        - docker
       script:
+        # Login Docker Hub
         - echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+
+        # Backend
         - docker build -t $DOCKER_API_IMAGE:$TRAVIS_COMMIT ./time_manager
         - docker tag $DOCKER_API_IMAGE:$TRAVIS_COMMIT $DOCKER_API_IMAGE:latest
         - docker push $DOCKER_API_IMAGE:$TRAVIS_COMMIT
         - docker push $DOCKER_API_IMAGE:latest
+
+        # Frontend
         - docker build -t $DOCKER_FRONT_IMAGE:$TRAVIS_COMMIT ./frontend
         - docker tag $DOCKER_FRONT_IMAGE:$TRAVIS_COMMIT $DOCKER_FRONT_IMAGE:latest
         - docker push $DOCKER_FRONT_IMAGE:$TRAVIS_COMMIT
         - docker push $DOCKER_FRONT_IMAGE:latest
 
-    # ─── Deploy (main only) ────────────────────────────────────
     - stage: deploy
+      name: "Deploy to VM"
+      language: minimal
       before_script:
         - echo "$SSH_KEY_BASE64" | base64 -d > /tmp/deploy_key
         - chmod 600 /tmp/deploy_key
       script:
+        # Copier le docker-compose.yml sur la VM
         - scp -i /tmp/deploy_key -o StrictHostKeyChecking=no docker-compose.yml $VM_USER@$VM_IP:$DEPLOY_PATH/
+
+        # SSH + pull + up
         - ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no $VM_USER@$VM_IP "
             cd $DEPLOY_PATH &&
             DOCKER_USER=$DOCKER_USER docker compose pull &&

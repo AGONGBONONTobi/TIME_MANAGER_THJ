@@ -332,7 +332,7 @@ describe('User.vue', () => {
       const wrapper = mountComponent()
       await flushPromises()
       await wrapper.vm.toggleClock()
-      expect(wrapper.vm.errorMessage).toContain('n’a pas pu être enregistré')
+      expect(wrapper.vm.errorMessage).toContain("n'a pas pu être enregistré")
     })
 
     it('clears isClocking after the call', async () => {

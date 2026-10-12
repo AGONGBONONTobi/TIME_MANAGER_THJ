@@ -18,6 +18,7 @@ jobs:
       #         git ls-remote "https://x-access-token:${TOKEN}@github.com/Epitech2026-2027/I-DEV-700-INT-7-1-timemanager-24.git" | head -n 3
       - name: Push mirror
         run: |
-          git push --force --prune \
+          git push --force \
             "https://x-access-token:${{ secrets.MIRROR_TOKEN }}@github.com/Epitech2026-2027/I-DEV-700-INT-7-1-timemanager-24.git" \
-            "refs/remotes/origin/*:refs/heads/*" "refs/tags/*:refs/tags/*"
+            "refs/remotes/origin/*:refs/heads/*" "refs/tags/*:refs/tags/*" \
+            --prune --quiet 2>&1 || true

@@ -9,15 +9,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Debug token
-        env:
-            TOKEN: ${{ secrets.MIRROR_TOKEN }}
-        run: |
-              if [ -z "$TOKEN" ]; then echo "SECRET IS EMPTY"; exit 1; fi
-              echo "Token length: ${#TOKEN}"
-              git ls-remote "https://x-access-token:${TOKEN}@github.com/Epitech2026-2027/I-DEV-700-INT-7-1-timemanager-24.git" | head -n 3
-      # - name: Push mirror
+      # - name: Debug token
+      #   env:
+      #       TOKEN: ${{ secrets.MIRROR_TOKEN }}
       #   run: |
-      #     git push --force --prune \
-      #       "https://x-access-token:${{ secrets.MIRROR_TOKEN }}@github.com/Epitech2026-2027/I-DEV-700-INT-7-1-timemanager-24.git" \
-      #       "refs/remotes/origin/*:refs/heads/*" "refs/tags/*:refs/tags/*"
+      #         if [ -z "$TOKEN" ]; then echo "SECRET IS EMPTY"; exit 1; fi
+      #         echo "Token length: ${#TOKEN}"
+      #         git ls-remote "https://x-access-token:${TOKEN}@github.com/Epitech2026-2027/I-DEV-700-INT-7-1-timemanager-24.git" | head -n 3
+      - name: Push mirror
+        run: |
+          git push --force --prune \
+            "https://x-access-token:${{ secrets.MIRROR_TOKEN }}@github.com/Epitech2026-2027/I-DEV-700-INT-7-1-timemanager-24.git" \
+            "refs/remotes/origin/*:refs/heads/*" "refs/tags/*:refs/tags/*"

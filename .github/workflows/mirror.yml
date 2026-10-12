@@ -7,11 +7,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Push mirror
-        id: mirror
-        uses: bridgelightcloud/github-mirror-action@v1
-        with:
-          origin: https://github.com/Epitech2026-2027/I-DEV-700-INT-7-1-timemanager-24
-          GITHUB_TOKEN: ${{secrets.MIRROR_TOKEN}}
+        env:
+          SRC: https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
+          DST: https://x-access-token:${{ secrets.MIRROR_TOKEN }}@github.com/Epitech2026-2027/I-DEV-700-INT-7-1-timemanager-24.git
+        run: |
+          git clone --mirror "$SRC" repo.git
+          cd repo.git
+          git push --prune "$DST" \
+            "+refs/heads/*:refs/heads/*" \
+            "+refs/tags/*:refs/tags/*"
         # run: |
         #   git push --force \
         #     "https://x-access-token:${{ secrets.MIRROR_TOKEN }}@github.com/Epitech2026-2027/I-DEV-700-INT-7-1-timemanager-24.git" \

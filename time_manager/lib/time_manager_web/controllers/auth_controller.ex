@@ -33,28 +33,38 @@ defmodule TimeManagerWeb.AuthController do
         else
           csrf_token = generate_csrf_token()
 
-          {:ok, jwt, _claims} =
-            TimeManager.Token.generate_and_sign(%{
-              "user_id" => user.id,
-              "role" => user.role,
-              "csrf_token" => csrf_token
-            })
+          {:ok, jwt, _claims} = TimeManager.Token.generate_and_sign(%{
+            "user_id" => user.id,
+            "role" => user.role,
+            "csrf_token" => csrf_token
+          })
 
           conn
           |> put_resp_cookie("auth_token", jwt,
             http_only: true,
+<<<<<<< HEAD
             secure: Application.get_env(:time_manager, :secure_cookies, false),
+=======
+            secure: true,                     # ✅ CORRIGÉ
+>>>>>>> e2bf0845a14597333825eb68af0872804c276bd9
             same_site: "Lax",
-            path: "/"
+            path: "/",
+            max_age: 30 * 24 * 3600           # ✅ 30 jours
           )
           |> put_resp_cookie("c-xsrf-token", csrf_token,
+<<<<<<< HEAD
             http_only: false,
             secure: Application.get_env(:time_manager, :secure_cookies, false),
+=======
+            http_only: false,                 # ✅ le front doit le lire
+            secure: true,                     # ✅ CORRIGÉ
+>>>>>>> e2bf0845a14597333825eb68af0872804c276bd9
             same_site: "Lax",
-            path: "/"
+            path: "/",
+            max_age: 30 * 24 * 3600
           )
           |> put_status(:ok)
-          |> json(%{user: public_user(user), token: jwt})
+          |> json(%{user: public_user(user)}) # ✅ JWT retiré du body
         end
 
       {:error, :invalid_credentials} ->
@@ -82,8 +92,8 @@ defmodule TimeManagerWeb.AuthController do
 
   def sign_out(conn, _params) do
     conn
-    |> delete_resp_cookie("auth_token", path: "/")
-    |> delete_resp_cookie("c-xsrf-token", path: "/")
+    |> delete_resp_cookie("auth_token", path: "/", secure: true, http_only: true)
+    |> delete_resp_cookie("c-xsrf-token", path: "/", secure: true)
     |> put_status(:ok)
     |> json(%{ok: true})
   end

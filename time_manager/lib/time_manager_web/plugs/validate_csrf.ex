@@ -22,25 +22,17 @@ defmodule TimeManagerWeb.Plugs.ValidateCsrf do
 
       case {expected, received} do
         {nil, _} ->
-          conn
-          |> Plug.Conn.put_status(:forbidden)
-          |> Phoenix.Controller.json(%{error: "Invalid CSRF token"})
-          |> halt()
+          forbidden(conn)
 
         {_, nil} ->
-          conn
-          |> Plug.Conn.put_status(:forbidden)
-          |> Phoenix.Controller.json(%{error: "Invalid CSRF token"})
-          |> halt()
+          forbidden(conn)
 
-        {expected, received} when expected == received ->
-          conn
-
-        _ ->
-          conn
-          |> Plug.Conn.put_status(:forbidden)
-          |> Phoenix.Controller.json(%{error: "Invalid CSRF token"})
-          |> halt()
+        {expected, received} ->
+          if secure_compare_safe(expected, received) do
+            conn
+          else
+            forbidden(conn)
+          end
       end
     else
       conn
@@ -52,5 +44,18 @@ defmodule TimeManagerWeb.Plugs.ValidateCsrf do
       ["Bearer " <> token | _] -> token
       _ -> nil
     end
+  end
+
+  defp secure_compare_safe(a, b) when byte_size(a) == byte_size(b) do
+    Plug.Crypto.secure_compare(a, b)
+  end
+
+  defp secure_compare_safe(_a, _b), do: false
+
+  defp forbidden(conn) do
+    conn
+    |> Plug.Conn.put_status(:forbidden)
+    |> Phoenix.Controller.json(%{error: "Invalid CSRF token"})
+    |> halt()
   end
 end

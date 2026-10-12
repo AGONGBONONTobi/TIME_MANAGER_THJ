@@ -3,7 +3,7 @@ name: Mirroring
 on: [push, delete]
 
 env:
-    MIRROR_URL: git@github.com/Epitech2026-2027/I-DEV-700-INT-7-1-timemanager-24.git
+    MIRROR_URL: https://github.com/Epitech2026-2027/I-DEV-700-INT-7-1-timemanager-24.git
     EXECUTABLES: mirror.yml
 
 jobs:

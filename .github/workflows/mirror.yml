@@ -2,20 +2,15 @@ name: Mirroring
 
 on: [push, delete]
 
-env:
-    MIRROR_URL: https://github.com/Epitech2026-2027/I-DEV-700-INT-7-1-timemanager-24.git
-    EXECUTABLES: mirror.yml
-
 jobs:
-  to_gitlab:
+  mirror:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: pixta-dev/repository-mirroring-action@v1
-        with:
-          target_repo_url:
-            ${{env.MIRROR_URL}}
-          ssh_private_key:
-            ${{ secrets.GIT_SSH_PRIVATE_KEY }}
+      - name: Push mirror
+        run: |
+          git push --force --prune \
+            "https://x-access-token:${{ secrets.MIRROR_TOKEN }}@github.com/Epitech2026-2027/I-DEV-700-INT-7-1-timemanager-24.git" \
+            "refs/remotes/origin/*:refs/heads/*" "refs/tags/*:refs/tags/*"

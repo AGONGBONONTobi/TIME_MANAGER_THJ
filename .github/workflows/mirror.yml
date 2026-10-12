@@ -14,7 +14,7 @@ jobs:
       #       TOKEN: ${{ secrets.MIRROR_TOKEN }}
       #   run: |
       #         if [ -z "$TOKEN" ]; then echo "SECRET IS EMPTY"; exit 1; fi
-      #         echo "Token length: ${#TOKEN}"
+      #          echo "Token length: ${#TOKEN}"
       #         git ls-remote "https://x-access-token:${TOKEN}@github.com/Epitech2026-2027/I-DEV-700-INT-7-1-timemanager-24.git" | head -n 3
       - name: Push mirror
         run: |

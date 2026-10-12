@@ -17,6 +17,6 @@ jobs:
             "+refs/heads/*:refs/heads/*" \
             "+refs/tags/*:refs/tags/*"
         # run: |
-        #   git push --force \
+        #   git push --force  \
         #     "https://x-access-token:${{ secrets.MIRROR_TOKEN }}@github.com/Epitech2026-2027/I-DEV-700-INT-7-1-timemanager-24.git" \
         #     "HEAD:refs/heads/${{ github.ref_name }}"

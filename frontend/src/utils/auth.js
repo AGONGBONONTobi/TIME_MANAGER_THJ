@@ -48,7 +48,9 @@ export function writeAuthUser(user) {
 
 function secureStorage() {
   const SecureStorage = globalThis.cordova?.plugins?.SecureStorage
-  if (!SecureStorage) return Promise.resolve(null)
+  if (!SecureStorage) {
+    return Promise.reject(new Error('Secure storage unavailable'))
+  }
   return new Promise((resolve) => {
     try {
       resolve(new SecureStorage(() => {}, () => {}, 'time_manager'))
@@ -61,20 +63,19 @@ function secureStorage() {
 export async function writeAuthToken(token) {
   if (!token) return ''
   const storage = await secureStorage()
-  if (storage) {
-    await new Promise((resolve, reject) => storage.set(resolve, reject, AUTH_TOKEN_STORAGE_KEY, token))
-  } else if (typeof window !== 'undefined') {
-    window.localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token)
+  if (!storage) {
+    throw new Error('Secure storage required to store authentication tokens')
   }
+  await new Promise((resolve, reject) => storage.set(resolve, reject, AUTH_TOKEN_STORAGE_KEY, token))
   return token
 }
 
 export async function getAuthToken() {
   const storage = await secureStorage()
-  if (storage) {
-    return new Promise((resolve) => storage.get(resolve, () => resolve(''), AUTH_TOKEN_STORAGE_KEY))
+  if (!storage) {
+    throw new Error('Secure storage required to read authentication tokens')
   }
-  return typeof window === 'undefined' ? '' : window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) || ''
+  return new Promise((resolve, reject) => storage.get(resolve, reject, AUTH_TOKEN_STORAGE_KEY))
 }
 
 export async function clearAuthUser() {

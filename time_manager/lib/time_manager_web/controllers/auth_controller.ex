@@ -43,13 +43,13 @@ defmodule TimeManagerWeb.AuthController do
           conn
           |> put_resp_cookie("auth_token", jwt,
             http_only: true,
-            secure: false,
+            secure: Application.get_env(:time_manager, :secure_cookies, false),
             same_site: "Lax",
             path: "/"
           )
           |> put_resp_cookie("c-xsrf-token", csrf_token,
             http_only: false,
-            secure: false,
+            secure: Application.get_env(:time_manager, :secure_cookies, false),
             same_site: "Lax",
             path: "/"
           )

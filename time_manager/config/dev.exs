@@ -26,6 +26,8 @@ config :time_manager, TimeManagerWeb.Endpoint,
   secret_key_base: "xfhAhXdOvAH+psS39+BFjRS3mfR5j4kyoVyuvuuQvEJAOd2GKbmdvNUjQnWCJy0Z",
   watchers: []
 
+config :time_manager, :secure_cookies, false
+
 # ## SSL Support
 #
 # In order to use HTTPS in development, a self-signed

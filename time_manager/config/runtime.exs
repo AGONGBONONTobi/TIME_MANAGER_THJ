@@ -64,7 +64,9 @@ if config_env() == :prod do
       port: port
     ],
     secret_key_base: secret_key_base,
-    server: true  
+    server: true
+
+  config :time_manager, :secure_cookies, true
 
   # ## SSL Support
   #

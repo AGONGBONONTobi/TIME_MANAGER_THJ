@@ -1,23 +1,87 @@
 name: Mirroring
 
-on: [push, delete]
+on:
+  push:
+    branches: ["**"]
+    tags: ["**"]
+  delete:
+  workflow_dispatch:
+
+concurrency:
+  group: mirror
+  cancel-in-progress: false
+
+env:
+  TARGET: https://github.com/Epitech2026-2027/I-DEV-700-INT-7-1-timemanager-24.git
 
 jobs:
-  mirror:
+  # Mirrors only the ref that triggered the run (fast)
+  mirror-ref:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      # - name: Debug token
-      #   env:
-      #       TOKEN: ${{ secrets.MIRROR_TOKEN }}
-      #   run: |
-      #         if [ -z "$TOKEN" ]; then echo "SECRET IS EMPTY"; exit 1; fi
-      #          echo "Token length: ${#TOKEN}"
-      #         git ls-remote "https://x-access-token:${TOKEN}@github.com/Epitech2026-2027/I-DEV-700-INT-7-1-timemanager-24.git" | head -n 3
-      - name: Push mirror
+
+      - name: Prepare auth
+        env:
+          RAW_TOKEN: ${{ secrets.MIRROR_TOKEN }}
         run: |
-          git push --force \
-            "https://x-access-token:${{ secrets.MIRROR_TOKEN }}@github.com/Epitech2026-2027/I-DEV-700-INT-7-1-timemanager-24.git" \
-            "HEAD:refs/heads/${{ github.ref_name }}"
+          TOKEN=$(printf '%s' "$RAW_TOKEN" | tr -d '[:space:]')
+          if [ -z "$TOKEN" ]; then
+            echo "::error::MIRROR_TOKEN is empty (fork PR? wrong secret name/scope?)"
+            exit 1
+          fi
+          echo "Token length: ${#TOKEN}, prefix: ${TOKEN:0:4}"
+          AUTH=$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)
+          echo "::add-mask::$AUTH"
+          echo "AUTH=$AUTH" >> "$GITHUB_ENV"
+          code=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer $TOKEN" \
+            https://api.github.com/repos/Epitech2026-2027/I-DEV-700-INT-7-1-timemanager-24)
+          echo "API check: HTTP $code"
+          [ "$code" = "200" ] || exit 1
+
+      - name: Push current ref
+        if: github.event_name != 'delete'
+        run: |
+          git -c http.extraheader="Authorization: Basic $AUTH" push --force "$TARGET" \
+            "HEAD:${{ github.ref }}"
+
+      - name: Delete mirrored ref
+        if: github.event_name == 'delete'
+        run: |
+          if [ "${{ github.event.ref_type }}" = "tag" ]; then
+            REF="refs/tags/${{ github.event.ref }}"
+          else
+            REF="refs/heads/${{ github.event.ref }}"
+          fi
+          git -c http.extraheader="Authorization: Basic $AUTH" push "$TARGET" --delete "$REF"
+
+  # Syncs every branch (all commits) and every tag
+  mirror-all:
+    if: github.event_name != 'delete'
+    needs: mirror-ref
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare auth
+        env:
+          RAW_TOKEN: ${{ secrets.MIRROR_TOKEN }}
+        run: |
+          TOKEN=$(printf '%s' "$RAW_TOKEN" | tr -d '[:space:]')
+          [ -n "$TOKEN" ] || { echo "::error::MIRROR_TOKEN is empty"; exit 1; }
+          AUTH=$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)
+          echo "::add-mask::$AUTH"
+          echo "AUTH=$AUTH" >> "$GITHUB_ENV"
+
+      - name: Push all branches and tags
+        run: |
+          REFSPECS=$(git for-each-ref --format='%(refname:strip=3)' refs/remotes/origin \
+            | grep -v '^HEAD$' \
+            | awk '{printf "refs/remotes/origin/%s:refs/heads/%s ", $1, $1}')
+          git -c http.extraheader="Authorization: Basic $AUTH" push --force "$TARGET" $REFSPECS
+          git -c http.extraheader="Authorization: Basic $AUTH" push --force "$TARGET" --tags

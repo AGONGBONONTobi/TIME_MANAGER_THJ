@@ -20,7 +20,9 @@ defmodule TimeManagerWeb.UserJSON do
       id: user.id,
       username: user.username,
       email: user.email,
-      role: user.role
+      role: user.role,
+      status: user.status,
+      must_change_password: user.must_change_password
     }
   end
 end

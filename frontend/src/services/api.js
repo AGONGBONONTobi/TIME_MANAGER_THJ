@@ -18,7 +18,7 @@ const api = axios.create({
 })
 
 api.interceptors.request.use(async (config) => {
-  const isPublicAuthRequest = ['/auth/sign_in', '/auth/sign_up'].includes(config.url)
+  const isPublicAuthRequest = config.url === '/auth/sign_in'
   const csrfToken = isPublicAuthRequest
     ? ''
     : isCordovaApp()
@@ -45,7 +45,7 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const isAuthRequest = ['/auth/sign_in', '/auth/sign_up'].includes(error.config?.url)
+    const isAuthRequest = error.config?.url === '/auth/sign_in'
     if (error?.response?.status === 401 && !isAuthRequest) {
       const shouldRedirect = isCordovaApp()
         ? await clearAuthUserIfCurrent(error.config?.authTokenUsed, error.config?.authSessionRevision)
@@ -99,7 +99,7 @@ api.createWorkingTime = (userID, workingTime) => api.post(`/users/${userID}/work
 api.updateWorkingTime = (workingTimeID, workingTime) => api.put(`/workingtime/${workingTimeID}`, { workingtime: workingTime })
 api.deleteWorkingTime = (workingTimeID) => api.delete(`/workingtime/${workingTimeID}`)
 
-api.updateUserRole = (userID, role) => api.put(`/users/${userID}/role`, { role })
+api.updateUserRole = (userID, role) => api.patch(`/users/${userID}/role`, { role })
 api.getClockCorrections = () => api.get('/clock-corrections')
 api.createClockCorrection = (correction) => api.post('/clock-corrections', { clock_correction: correction })
 api.getPendingClockCorrections = () => api.get('/clock-corrections/pending')

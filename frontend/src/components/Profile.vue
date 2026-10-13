@@ -25,7 +25,7 @@ export default {
 <template>
   <section class="profile-page"><p class="eyebrow">MON COMPTE</p><h1>Profil</h1>
     <form class="profile-card" @submit.prevent="saveProfile"><label>Nom d’utilisateur<input v-model="user.username" required></label><label>Email<input v-model="user.email" type="email" required></label><p>Rôle : <strong>{{ user.role }}</strong></p><button type="submit">Enregistrer le profil</button></form>
-    <form class="profile-card" @submit.prevent="changePassword"><h2>Changer le mot de passe</h2><label>Ancien mot de passe<input v-model="currentPassword" type="password" required></label><label>Nouveau mot de passe<input v-model="newPassword" type="password" minlength="8" required></label><label>Confirmation<input v-model="confirmation" type="password" required></label><button type="submit" :disabled="loading">Modifier le mot de passe</button></form>
+    <form class="profile-card" @submit.prevent="changePassword"><h2>Changer le mot de passe</h2><label>Ancien mot de passe<input v-model="currentPassword" type="password" required></label><label>Nouveau mot de passe<input v-model="newPassword" type="password" minlength="12" required></label><label>Confirmation<input v-model="confirmation" type="password" minlength="12" required></label><button type="submit" :disabled="loading">Modifier le mot de passe</button></form>
     <p v-if="message" class="success">{{ message }}</p><p v-if="error" class="error">{{ error }}</p>
   </section>
 </template>

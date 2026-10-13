@@ -44,10 +44,11 @@ export default {
           id: user.id,
           username: user.username || user.email || 'Utilisateur',
           role: user.role,
-          onboarded_at: user.onboarded_at || null
+          onboarded_at: user.onboarded_at || null,
+          must_change_password: user.must_change_password
         })
 
-        this.$router.push('/dashboard')
+        this.$router.push(user.must_change_password ? '/change-password' : '/dashboard')
       } catch (error) {
         const message = error?.response?.data?.error
           || error?.response?.data?.message
@@ -91,10 +92,7 @@ export default {
         {{ isSubmitting ? 'Connexion…' : 'Se connecter' }}
       </button>
 
-      <p class="auth-switch">
-        Première connexion ?
-        <router-link to="/sign_up">Créer un compte</router-link>
-      </p>
+      <p class="auth-switch">Pour obtenir un accès, contactez l’administrateur de votre organisation.</p>
     </form>
   </AuthShell>
 </template>

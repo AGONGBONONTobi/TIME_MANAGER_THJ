@@ -48,6 +48,20 @@ defmodule TimeManager.Accounts do
     |> Repo.insert()
   end
 
+  def create_user_with_temporary_password(attrs) do
+    temporary_password = :crypto.strong_rand_bytes(32) |> Base.url_encode64(padding: false)
+
+    changeset =
+      %User{}
+      |> User.changeset(Map.put(attrs, "password", temporary_password))
+      |> Ecto.Changeset.put_change(:must_change_password, true)
+
+    case Repo.insert(changeset) do
+      {:ok, user} -> {:ok, user, temporary_password}
+      error -> error
+    end
+  end
+
   def register_user(attrs \\ %{}) do
     %User{}
     |> User.registration_changeset(attrs)
@@ -88,6 +102,7 @@ defmodule TimeManager.Accounts do
     if valid_password?(user, current_password) do
       user
       |> User.changeset(%{password: new_password})
+      |> Ecto.Changeset.put_change(:must_change_password, false)
       |> Repo.update()
     else
       {:error, :invalid_current_password}

@@ -25,9 +25,11 @@ export default {
       currentPage: 1,
       perPage: 10,
       isUserModalOpen: false,
+      temporaryCredentials: null,
+      copiedTemporaryPassword: false,
       teamFilter: '',
       sortBy: 'username',
-      newUser: { username: '', email: '', password: '', role: 'employee', status: 'active', contract_start: '', contract_end: '' }
+      newUser: { username: '', email: '', role: 'employee', status: 'active', contract_start: '', contract_end: '' }
     }
   },
   computed: {
@@ -92,12 +94,29 @@ export default {
   methods: {
     openUserModal() { this.isUserModalOpen = true },
     async createAdminUser() {
+      this.errorMessage = ''
       try {
         const response = await api.createUser(this.newUser)
-        this.users.push(response.data?.data || response.data?.user)
+        const { data: user, temporary_password: temporaryPassword } = response.data || {}
+        if (!user || !temporaryPassword) {
+          throw new Error('Réponse de création incomplète.')
+        }
+        this.users.push(user)
+        this.temporaryCredentials = { username: user.username, email: user.email, password: temporaryPassword }
+        this.copiedTemporaryPassword = false
         this.isUserModalOpen = false
-        this.newUser = { username: '', email: '', password: '', role: 'employee', status: 'active', contract_start: '', contract_end: '' }
-      } catch { this.errorMessage = 'La création de l’utilisateur a échoué.' }
+        this.newUser = { username: '', email: '', role: 'employee', status: 'active', contract_start: '', contract_end: '' }
+      } catch (error) {
+        this.errorMessage = error.response?.data?.error || error.message || 'La création de l’utilisateur a échoué.'
+      }
+    },
+    async copyTemporaryPassword() {
+      try {
+        await navigator.clipboard.writeText(this.temporaryCredentials.password)
+        this.copiedTemporaryPassword = true
+      } catch {
+        this.errorMessage = 'La copie automatique a échoué. Sélectionnez et copiez le mot de passe affiché.'
+      }
     },
     async loadData() {
       this.isLoading = true
@@ -166,11 +185,9 @@ export default {
     async updateUserLifecycle(user) {
       try {
         await api.updateUser(user.id, {
-          user: {
-            status: user.status,
-            contract_start: user.contract_start || null,
-            contract_end: user.contract_end || null
-          }
+          status: user.status,
+          contract_start: user.contract_start || null,
+          contract_end: user.contract_end || null
         })
         this.errorMessage = ''
         alert(`Les informations de ${user.username} ont été mises à jour.`)
@@ -411,7 +428,30 @@ export default {
         </button>
       </div>
     </section>
-    <div v-if="isUserModalOpen" class="modal-backdrop" @click.self="isUserModalOpen = false"><form class="modal-card" @submit.prevent="createAdminUser"><div class="card-heading"><h2>Nouvel utilisateur</h2><button class="modal-close" type="button" @click="isUserModalOpen = false">×</button></div><label class="modal-field">Nom d’utilisateur<input v-model="newUser.username" required></label><label class="modal-field">Email<input v-model="newUser.email" type="email" required></label><label class="modal-field">Mot de passe<input v-model="newUser.password" type="password" minlength="8" required></label><label class="modal-field">Rôle<select v-model="newUser.role"><option value="employee">Employé</option><option value="manager">Manager</option><option value="admin">Admin</option></select></label><label class="modal-field">Statut<select v-model="newUser.status"><option value="active">Actif</option><option value="inactive">Inactif</option><option value="on_leave">En congé</option><option value="suspended">Suspendu</option><option value="terminated">Terminé</option></select></label><div class="modal-actions"><button class="refresh-button" type="button" @click="isUserModalOpen = false">Annuler</button><button class="action-button" type="submit">Créer</button></div></form></div>
+    <div v-if="isUserModalOpen" class="modal-backdrop" @click.self="isUserModalOpen = false">
+      <form class="modal-card" @submit.prevent="createAdminUser">
+        <div class="card-heading"><h2>Nouvel utilisateur</h2><button class="modal-close" type="button" @click="isUserModalOpen = false">×</button></div>
+        <p>Un mot de passe temporaire aléatoire sera généré. Il devra être changé à la première connexion.</p>
+        <label class="modal-field">Nom d’utilisateur<input v-model="newUser.username" required></label>
+        <label class="modal-field">Email<input v-model="newUser.email" type="email" required></label>
+        <label class="modal-field">Rôle<select v-model="newUser.role"><option value="employee">Employé</option><option value="manager">Manager</option><option value="admin">Admin</option></select></label>
+        <label class="modal-field">Statut<select v-model="newUser.status"><option value="active">Actif</option><option value="inactive">Inactif</option><option value="on_leave">En congé</option><option value="suspended">Suspendu</option><option value="terminated">Terminé</option></select></label>
+        <div class="modal-actions"><button class="refresh-button" type="button" @click="isUserModalOpen = false">Annuler</button><button class="action-button" type="submit">Créer</button></div>
+      </form>
+    </div>
+    <div v-if="temporaryCredentials" class="modal-backdrop">
+      <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="temporary-password-title">
+        <div class="card-heading"><h2 id="temporary-password-title">Compte créé</h2></div>
+        <p>Communiquez ces identifiants à {{ temporaryCredentials.username }} par un canal sûr. Ce mot de passe ne sera affiché qu’une fois.</p>
+        <label class="modal-field">Adresse e-mail<input :value="temporaryCredentials.email" readonly></label>
+        <label class="modal-field">Mot de passe temporaire<input :value="temporaryCredentials.password" readonly autocomplete="off"></label>
+        <p>Le changement du mot de passe sera obligatoire à la première connexion.</p>
+        <div class="modal-actions">
+          <button class="refresh-button" type="button" @click="copyTemporaryPassword">{{ copiedTemporaryPassword ? 'Copié' : 'Copier le mot de passe' }}</button>
+          <button class="action-button" type="button" @click="temporaryCredentials = null">J’ai noté les identifiants</button>
+        </div>
+      </section>
+    </div>
 
     <!-- Grille : équipes + absences -->
     <div class="admin-grid">

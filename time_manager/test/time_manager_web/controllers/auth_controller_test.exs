@@ -24,7 +24,11 @@ defmodule TimeManagerWeb.AuthControllerTest do
       |> post(~p"/api/auth/sign_in", %{email: user.email, password: "test-password-123"})
 
     assert %{
-             "user" => %{"id" => id, "role" => "employee"},
+             "user" => %{
+               "id" => id,
+               "role" => "employee",
+               "must_change_password" => false
+             },
              "token" => token,
              "csrf_token" => csrf_token
            } = json_response(conn, 200)

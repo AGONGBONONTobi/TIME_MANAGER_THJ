@@ -71,7 +71,7 @@ defmodule TimeManager.AccountsTest do
                Accounts.register_user(%{
                  username: "public-user",
                  email: "public-user@example.com",
-                 password: "password123",
+                 password: "password-1234",
                  role: "admin"
                })
 

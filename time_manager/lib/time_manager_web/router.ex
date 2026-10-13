@@ -30,20 +30,16 @@ defmodule TimeManagerWeb.Router do
   scope "/api", TimeManagerWeb do
     pipe_through(:api)
 
-    scope "/auth" do
-      post "/sign_up", AuthController, :sign_up
-      post "/sign_in", AuthController, :sign_in
-    end
+    post "/auth/sign_in", AuthController, :sign_in
 
     scope "/auth" do
       pipe_through [:require_auth, :require_csrf]
-      # ← AJOUTER
       post("/complete_onboarding", AuthController, :complete_onboarding)
       post "/sign_out", AuthController, :sign_out
     end
 
     scope "/auth" do
-      pipe_through [:require_auth]
+      pipe_through [:require_auth, :require_csrf]
       get "/me", AuthController, :me
       put "/password", AuthController, :change_password
     end
@@ -52,15 +48,20 @@ defmodule TimeManagerWeb.Router do
       pipe_through [:require_auth]
 
       get("/", UserController, :index)
-      post("/", UserController, :create)
       get("/:userID", UserController, :show)
+    end
+
+    scope "/users" do
+      pipe_through [:require_auth, :require_user_access, :require_csrf]
+
       put("/:userID", UserController, :update)
       delete("/:userID", UserController, :delete)
     end
 
     scope "/users" do
-      pipe_through [:require_auth, :require_admin]
+      pipe_through [:require_auth, :require_admin, :require_csrf]
 
+      post "/", UserController, :create
       patch("/:userID/role", UserController, :update_role)
     end
 

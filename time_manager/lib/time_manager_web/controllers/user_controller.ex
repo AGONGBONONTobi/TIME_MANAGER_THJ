@@ -6,28 +6,33 @@ defmodule TimeManagerWeb.UserController do
 
   action_fallback TimeManagerWeb.FallbackController
 
-  operation :index,
+  operation(:index,
     summary: "List users",
     responses: [ok: "Users returned"]
+  )
 
-  operation :create,
+  operation(:create,
     summary: "Create a user",
     responses: [created: "User created", bad_request: "Invalid user"]
+  )
 
-  operation :show,
+  operation(:show,
     summary: "Get a user",
     parameters: [userID: [in: :path, required: true, type: :string]],
     responses: [ok: "User returned", not_found: "User not found"]
+  )
 
-  operation :update,
+  operation(:update,
     summary: "Update a user",
     parameters: [userID: [in: :path, required: true, type: :string]],
     responses: [ok: "User updated", bad_request: "Invalid user", not_found: "User not found"]
+  )
 
-  operation :delete,
+  operation(:delete,
     summary: "Delete a user",
     parameters: [userID: [in: :path, required: true, type: :string]],
     responses: [no_content: "User deleted", not_found: "User not found"]
+  )
 
   def index(conn, params) do
     users = Accounts.get_users_by_filters(params)
@@ -38,11 +43,21 @@ defmodule TimeManagerWeb.UserController do
   end
 
   def create(conn, %{"user" => user_params}) do
-    case Accounts.create_user(user_params) do
-      {:ok, user} ->
+    case Accounts.create_user_with_temporary_password(user_params) do
+      {:ok, user, temporary_password} ->
         conn
         |> put_status(201)
-        |> render(:show, user: user)
+        |> json(%{
+          data: %{
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            role: user.role,
+            status: user.status,
+            must_change_password: user.must_change_password
+          },
+          temporary_password: temporary_password
+        })
 
       {:error, _changeset} ->
         conn
@@ -66,24 +81,42 @@ defmodule TimeManagerWeb.UserController do
   end
 
   def update(conn, %{"userID" => id, "user" => user_params}) do
-    case Accounts.get_user(id) do
-      nil ->
-        conn
-        |> put_status(404)
-        |> json(%{error: "User not found"})
+    protected_fields = ["role", "status", "password", "contract_start", "contract_end"]
 
-      user ->
-        case Accounts.update_user(user, user_params) do
-          {:ok, updated_user} ->
-            conn
-            |> put_status(200)
-            |> render(:show, user: updated_user)
+    non_admin_changes? =
+      conn.assigns.current_user.role != "admin" and
+        Enum.any?(protected_fields, fn field ->
+          Map.has_key?(user_params, field) or
+            Map.has_key?(user_params, String.to_existing_atom(field))
+        end)
 
-          {:error, _changeset} ->
-            conn
-            |> put_status(400)
-            |> json(%{error: "Failed to update user"})
-        end
+    if non_admin_changes? do
+      conn
+      |> put_status(:forbidden)
+      |> json(%{
+        error:
+          "Only administrators can update account privileges, passwords, and lifecycle fields"
+      })
+    else
+      case Accounts.get_user(id) do
+        nil ->
+          conn
+          |> put_status(404)
+          |> json(%{error: "User not found"})
+
+        user ->
+          case Accounts.update_user(user, user_params) do
+            {:ok, updated_user} ->
+              conn
+              |> put_status(200)
+              |> render(:show, user: updated_user)
+
+            {:error, _changeset} ->
+              conn
+              |> put_status(400)
+              |> json(%{error: "Failed to update user"})
+          end
+      end
     end
   end
 
@@ -100,10 +133,11 @@ defmodule TimeManagerWeb.UserController do
     end
   end
 
-  operation :update_role,
+  operation(:update_role,
     summary: "Update user role (Admin only)",
     parameters: [userID: [in: :path, required: true, type: :string]],
     responses: [ok: "Role updated", bad_request: "Invalid role", not_found: "User not found"]
+  )
 
   def update_role(conn, %{"userID" => id, "role" => role}) do
     case Accounts.get_user(id) do

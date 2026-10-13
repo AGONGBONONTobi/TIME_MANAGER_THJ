@@ -9,6 +9,7 @@ defmodule TimeManager.Accounts.User do
     field :password_hash, :string
     field :role, :string, default: "employee"
     field :status, :string, default: "active"
+    field :must_change_password, :boolean, default: false
     field :contract_start, :date
     field :contract_end, :date
     field :onboarded_at, :utc_datetime
@@ -23,7 +24,7 @@ defmodule TimeManager.Accounts.User do
     user
     |> cast(attrs, [:username, :email, :password, :role, :status, :contract_start, :contract_end])
     |> validate_required([:username, :email])
-    |> validate_length(:password, min: 8)
+    |> validate_length(:password, min: 12)
     |> validate_format(:email, ~r/^[^\s]+@[^\s]+\.[^\s]+$/)
     |> validate_inclusion(:role, ["employee", "manager", "admin"])
     |> validate_inclusion(:status, ["active", "inactive", "on_leave", "suspended", "terminated"])
@@ -36,7 +37,7 @@ defmodule TimeManager.Accounts.User do
       user
       |> cast(attrs, [:username, :email, :password])
       |> validate_required([:username, :email, :password])
-      |> validate_length(:password, min: 8)
+      |> validate_length(:password, min: 12)
       |> validate_format(:email, ~r/^[^\s]+@[^\s]+\.[^\s]+$/)
       |> unique_constraint(:email)
 

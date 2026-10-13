@@ -3,26 +3,6 @@ defmodule TimeManagerWeb.AuthController do
 
   alias TimeManager.Accounts
 
-  def sign_up(conn, params) do
-    case Accounts.register_user(params) do
-      {:ok, user} ->
-        conn
-        |> put_status(:created)
-        |> json(%{user: public_user(user)})
-
-      {:error, changeset} ->
-        message =
-          case changeset.errors do
-            [{:email, {"has already been taken", _}} | _] -> "Email déjà utilisé."
-            _ -> "Données invalides."
-          end
-
-        conn
-        |> put_status(:bad_request)
-        |> json(%{error: message})
-    end
-  end
-
   def sign_in(conn, %{"email" => email, "password" => password}) do
     case Accounts.authenticate(email, password) do
       {:ok, user} ->
@@ -33,11 +13,12 @@ defmodule TimeManagerWeb.AuthController do
         else
           csrf_token = generate_csrf_token()
 
-          {:ok, jwt, _claims} = TimeManager.Token.generate_and_sign(%{
-            "user_id" => user.id,
-            "role" => user.role,
-            "csrf_token" => csrf_token
-          })
+          {:ok, jwt, _claims} =
+            TimeManager.Token.generate_and_sign(%{
+              "user_id" => user.id,
+              "role" => user.role,
+              "csrf_token" => csrf_token
+            })
 
           conn
           |> put_resp_cookie("auth_token", jwt,
@@ -118,6 +99,7 @@ defmodule TimeManagerWeb.AuthController do
       email: user.email,
       role: user.role,
       status: user.status,
+      must_change_password: user.must_change_password,
       contract_start: user.contract_start,
       contract_end: user.contract_end,
       onboarded_at: user.onboarded_at

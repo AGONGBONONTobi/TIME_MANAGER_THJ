@@ -29,7 +29,8 @@ export function readAuthUser() {
       id: Number(parsed.id),
       username: parsed.username || '',
       role: String(parsed.role),
-      onboarded_at: parsed.onboarded_at || null
+      onboarded_at: parsed.onboarded_at || null,
+      must_change_password: Boolean(parsed.must_change_password)
     }
   } catch {
     window.localStorage.removeItem(AUTH_STORAGE_KEY)
@@ -46,7 +47,8 @@ export function writeAuthUser(user) {
     id: Number(user.id),
     username: user.username || '',
     role: String(user.role),
-    onboarded_at: user.onboarded_at || null
+    onboarded_at: user.onboarded_at || null,
+    must_change_password: Boolean(user.must_change_password)
   }
 
   window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(payload))

@@ -6,11 +6,11 @@ import ChartManager from '../components/ChartManager.vue'
 import AdminDashboard from '../components/AdminDashboard.vue'
 import ManageDashboard from '@/components/ManageDashboard.vue'
 import Authentication from '../components/Authentication.vue'
-import Register from '../components/Register.vue'
 import Dashboard from '../components/Dashboard.vue'
 import Unauthorized from '../components/Unauthorized.vue'
 import Notifications from '../components/Notifications.vue'
 import Profile from '../components/Profile.vue'
+import ChangePassword from '../components/ChangePassword.vue'
 import { readAuthUser } from '../utils/auth'
 
 const routes = [
@@ -24,12 +24,7 @@ const routes = [
     component: Authentication,
     meta: { guestOnly: true }
   },
-  {
-    path: '/sign_up',
-    name: 'signUp',
-    component: Register,
-    meta: { guestOnly: true }
-  },
+  { path: '/change-password', name: 'changePassword', component: ChangePassword, meta: { requiresAuth: true } },
   {
     path: '/dashboard',
     name: 'dashboard',
@@ -119,6 +114,14 @@ router.beforeEach((to) => {
 
   if (to.meta?.requiresAuth && !isAuthenticated) {
     return { path: '/sign_in', query: { redirect: to.fullPath } }
+  }
+
+  if (isAuthenticated && currentUser.must_change_password && to.path !== '/change-password') {
+    return '/change-password'
+  }
+
+  if (isAuthenticated && !currentUser.must_change_password && to.path === '/change-password') {
+    return '/dashboard'
   }
 
   if (to.meta?.roles && currentUser && !to.meta.roles.includes(String(currentUser.role).toLowerCase())) {

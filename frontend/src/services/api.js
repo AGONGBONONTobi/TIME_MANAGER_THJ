@@ -5,7 +5,8 @@ import {
   getAuthCsrfToken,
   getAuthSessionRevision,
   getAuthToken,
-  getCsrfToken
+  getCsrfToken,
+  isCordovaApp
 } from '../utils/auth'
 
 const api = axios.create({
@@ -17,11 +18,10 @@ const api = axios.create({
 })
 
 api.interceptors.request.use(async (config) => {
-  const isCordovaApp = typeof globalThis.cordova !== 'undefined'
   const isPublicAuthRequest = ['/auth/sign_in', '/auth/sign_up'].includes(config.url)
   const csrfToken = isPublicAuthRequest
     ? ''
-    : isCordovaApp
+    : isCordovaApp()
       ? await getAuthCsrfToken()
       : getCsrfToken()
 
@@ -47,8 +47,7 @@ api.interceptors.response.use(
   async (error) => {
     const isAuthRequest = ['/auth/sign_in', '/auth/sign_up'].includes(error.config?.url)
     if (error?.response?.status === 401 && !isAuthRequest) {
-      const isCordovaApp = typeof globalThis.cordova !== 'undefined'
-      const shouldRedirect = isCordovaApp
+      const shouldRedirect = isCordovaApp()
         ? await clearAuthUserIfCurrent(error.config?.authTokenUsed, error.config?.authSessionRevision)
         : (await clearAuthUser(), true)
 

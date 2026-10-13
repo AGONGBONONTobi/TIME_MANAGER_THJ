@@ -5,10 +5,16 @@ import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [
     vue(),
     vueDevTools(),
+    ...(mode === 'mobile' ? [{
+      name: 'cordova-runtime-script',
+      transformIndexHtml(html) {
+        return html.replace('</body>', '    <script src="cordova.js"></script>\n  </body>')
+      },
+    }] : []),
   ],
   resolve: {
     alias: {
@@ -26,4 +32,4 @@ export default defineConfig({
       include: ['test/**/*.spec.js'],
       setupFiles: ['./test/setup.js'],
     },
-})
+}))

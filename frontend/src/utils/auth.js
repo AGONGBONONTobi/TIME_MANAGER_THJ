@@ -53,8 +53,8 @@ export function writeAuthUser(user) {
   return payload
 }
 
-function isCordovaApp() {
-  return typeof globalThis.cordova !== 'undefined'
+export function isCordovaApp() {
+  return import.meta.env.MODE === 'mobile' || typeof globalThis.cordova !== 'undefined'
 }
 
 function secureStorage() {

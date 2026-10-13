@@ -1,5 +1,6 @@
 export const AUTH_STORAGE_KEY = 'time_manager_user'
 export const AUTH_TOKEN_STORAGE_KEY = 'time_manager_token'
+export const AUTH_CSRF_STORAGE_KEY = 'time_manager_csrf_token'
 
 export function readAuthUser() {
   if (typeof window === 'undefined') {
@@ -46,36 +47,72 @@ export function writeAuthUser(user) {
   return payload
 }
 
+function isCordovaApp() {
+  return typeof globalThis.cordova !== 'undefined'
+}
+
 function secureStorage() {
+  if (!isCordovaApp()) {
+    return Promise.resolve(null)
+  }
+
   const SecureStorage = globalThis.cordova?.plugins?.SecureStorage
   if (!SecureStorage) {
-    return Promise.reject(new Error('Secure storage unavailable'))
+    return Promise.reject(new Error('Secure storage unavailable; cannot authenticate securely.'))
   }
-  return new Promise((resolve) => {
+
+  return new Promise((resolve, reject) => {
+    let storage
     try {
-      resolve(new SecureStorage(() => {}, () => {}, 'time_manager'))
-    } catch {
-      resolve(null)
+      storage = new SecureStorage(() => resolve(storage), reject, 'time_manager')
+    } catch (error) {
+      reject(error)
     }
   })
 }
 
-export async function writeAuthToken(token) {
-  if (!token) return ''
-  const storage = await secureStorage()
-  if (!storage) {
-    throw new Error('Secure storage required to store authentication tokens')
+async function getSecureValue(storage, key) {
+  const keys = await new Promise((resolve, reject) => storage.keys(resolve, reject))
+  if (!keys.includes(key)) {
+    return ''
   }
-  await new Promise((resolve, reject) => storage.set(resolve, reject, AUTH_TOKEN_STORAGE_KEY, token))
-  return token
+  return new Promise((resolve, reject) => storage.get(resolve, reject, key))
+}
+
+async function writeSecureValue(key, value) {
+  if (!isCordovaApp()) {
+    return ''
+  }
+  if (typeof value !== 'string' || !value) {
+    throw new Error('The server did not provide the secure authentication credentials required by the mobile app.')
+  }
+  const storage = await secureStorage()
+  await new Promise((resolve, reject) => storage.set(resolve, reject, key, value))
+  return value
+}
+
+export function writeAuthToken(token) {
+  return writeSecureValue(AUTH_TOKEN_STORAGE_KEY, token)
+}
+
+export function writeAuthCsrfToken(token) {
+  return writeSecureValue(AUTH_CSRF_STORAGE_KEY, token)
 }
 
 export async function getAuthToken() {
-  const storage = await secureStorage()
-  if (!storage) {
-    throw new Error('Secure storage required to read authentication tokens')
+  if (!isCordovaApp()) {
+    return ''
   }
-  return new Promise((resolve, reject) => storage.get(resolve, reject, AUTH_TOKEN_STORAGE_KEY))
+  const storage = await secureStorage()
+  return getSecureValue(storage, AUTH_TOKEN_STORAGE_KEY)
+}
+
+export async function getAuthCsrfToken() {
+  if (!isCordovaApp()) {
+    return ''
+  }
+  const storage = await secureStorage()
+  return getSecureValue(storage, AUTH_CSRF_STORAGE_KEY)
 }
 
 export async function clearAuthUser() {
@@ -83,9 +120,15 @@ export async function clearAuthUser() {
     window.localStorage.removeItem(AUTH_STORAGE_KEY)
     window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY)
   }
+  if (!isCordovaApp()) {
+    return
+  }
   const storage = await secureStorage()
-  if (storage) {
-    await new Promise((resolve) => storage.remove(resolve, resolve, AUTH_TOKEN_STORAGE_KEY))
+  const keys = await new Promise((resolve, reject) => storage.keys(resolve, reject))
+  for (const key of [AUTH_TOKEN_STORAGE_KEY, AUTH_CSRF_STORAGE_KEY]) {
+    if (keys.includes(key)) {
+      await new Promise((resolve, reject) => storage.remove(resolve, reject, key))
+    }
   }
 }
 

@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { clearAuthUser, getAuthToken, getCsrfToken } from '../utils/auth'
+import { clearAuthUser, getAuthCsrfToken, getAuthToken, getCsrfToken } from '../utils/auth'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
@@ -10,13 +10,19 @@ const api = axios.create({
 })
 
 api.interceptors.request.use(async (config) => {
-  const csrfToken = getCsrfToken()
+  const isCordovaApp = typeof globalThis.cordova !== 'undefined'
+  const isPublicAuthRequest = ['/auth/sign_in', '/auth/sign_up'].includes(config.url)
+  const csrfToken = isPublicAuthRequest
+    ? ''
+    : isCordovaApp
+      ? await getAuthCsrfToken()
+      : getCsrfToken()
 
   if (csrfToken && config.headers) {
     config.headers['x-xsrf-token'] = csrfToken
   }
 
-  const authToken = await getAuthToken()
+  const authToken = isPublicAuthRequest ? '' : await getAuthToken()
   if (authToken && config.headers) {
     config.headers.Authorization = `Bearer ${authToken}`
   }

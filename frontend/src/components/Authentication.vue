@@ -1,6 +1,6 @@
 <script>
 import api from '../services/api'
-import { writeAuthToken, writeAuthUser } from '../utils/auth'
+import { writeAuthCsrfToken, writeAuthToken, writeAuthUser } from '../utils/auth'
 import AuthShell from './AuthShell.vue'
 
 export default {
@@ -39,6 +39,7 @@ export default {
         }
 
         await writeAuthToken(response.data?.token)
+        await writeAuthCsrfToken(response.data?.csrf_token)
         writeAuthUser({
           id: user.id,
           username: user.username || user.email || 'Utilisateur',
@@ -48,7 +49,9 @@ export default {
 
         this.$router.push('/dashboard')
       } catch (error) {
-        const message = error?.response?.data?.error || error?.response?.data?.message || 'Identifiants invalides.'
+        const message = error?.response?.data?.error
+          || error?.response?.data?.message
+          || (error?.response ? 'Identifiants invalides.' : error?.message || 'Connexion au serveur impossible.')
         this.errorMessage = message
       } finally {
         this.isSubmitting = false

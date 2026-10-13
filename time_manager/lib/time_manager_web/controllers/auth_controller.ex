@@ -42,29 +42,20 @@ defmodule TimeManagerWeb.AuthController do
           conn
           |> put_resp_cookie("auth_token", jwt,
             http_only: true,
-<<<<<<< HEAD
             secure: Application.get_env(:time_manager, :secure_cookies, false),
-=======
-            secure: true,                     # ✅ CORRIGÉ
->>>>>>> e2bf0845a14597333825eb68af0872804c276bd9
             same_site: "Lax",
             path: "/",
-            max_age: 30 * 24 * 3600           # ✅ 30 jours
+            max_age: 30 * 24 * 3600
           )
           |> put_resp_cookie("c-xsrf-token", csrf_token,
-<<<<<<< HEAD
             http_only: false,
             secure: Application.get_env(:time_manager, :secure_cookies, false),
-=======
-            http_only: false,                 # ✅ le front doit le lire
-            secure: true,                     # ✅ CORRIGÉ
->>>>>>> e2bf0845a14597333825eb68af0872804c276bd9
             same_site: "Lax",
             path: "/",
             max_age: 30 * 24 * 3600
           )
           |> put_status(:ok)
-          |> json(%{user: public_user(user)}) # ✅ JWT retiré du body
+          |> json(sign_in_response(conn, user, jwt, csrf_token))
         end
 
       {:error, :invalid_credentials} ->
@@ -131,6 +122,16 @@ defmodule TimeManagerWeb.AuthController do
       contract_end: user.contract_end,
       onboarded_at: user.onboarded_at
     }
+  end
+
+  defp sign_in_response(conn, user, jwt, csrf_token) do
+    response = %{user: public_user(user)}
+
+    if get_req_header(conn, "origin") == ["https://localhost"] do
+      Map.merge(response, %{token: jwt, csrf_token: csrf_token})
+    else
+      response
+    end
   end
 
   defp generate_csrf_token do

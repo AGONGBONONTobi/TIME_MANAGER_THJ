@@ -6,3 +6,4 @@ nginx.conf
 influxdata-archive_compat.key
 FETCH_HEAD
 *.bak
+security/reports/

@@ -22,7 +22,7 @@
     <preference name="DisallowOverscroll" value="true" />
     <preference name="StatusBarStyle" value="lightcontent" />
     <preference name="StatusBarBackgroundColor" value="#111827" />
-    <preference name="SplashScreenDelay" value="2000" />
+    <preference name="SplashScreenDelay" value="3000" />
     <preference name="AndroidWindowSplashScreenBackground" value="#111827" />
     <preference name="AndroidWindowSplashScreenIconBackgroundColor" value="#111827" />
     <preference name="AndroidWindowSplashScreenAnimatedIcon" value="resources/splash/gotham-splash.png" />

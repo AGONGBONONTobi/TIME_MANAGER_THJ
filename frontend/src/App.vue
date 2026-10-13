@@ -95,9 +95,8 @@ export default {
         const user = response.data?.user
         this.currentUser = writeAuthUser(user)
       } catch (error) {
-        if (error?.response?.status === 401) {
-          clearAuthUser()
-          this.currentUser = null
+        if (error?.response?.status !== 401) {
+          console.warn('Impossible de vérifier la session auprès de l’API.', error)
         }
       }
     },

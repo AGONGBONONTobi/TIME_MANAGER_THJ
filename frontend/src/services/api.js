@@ -1,5 +1,12 @@
 import axios from 'axios'
-import { clearAuthUser, getAuthCsrfToken, getAuthToken, getCsrfToken } from '../utils/auth'
+import {
+  clearAuthUser,
+  clearAuthUserIfCurrent,
+  getAuthCsrfToken,
+  getAuthSessionRevision,
+  getAuthToken,
+  getCsrfToken
+} from '../utils/auth'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
@@ -27,15 +34,25 @@ api.interceptors.request.use(async (config) => {
     config.headers.Authorization = `Bearer ${authToken}`
   }
 
+  if (authToken) {
+    config.authSessionRevision = getAuthSessionRevision()
+    config.authTokenUsed = authToken
+  }
+
   return config
 })
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error?.response?.status === 401) {
-      clearAuthUser()
-      if (window.location.hash !== '#/sign_in') {
+  async (error) => {
+    const isAuthRequest = ['/auth/sign_in', '/auth/sign_up'].includes(error.config?.url)
+    if (error?.response?.status === 401 && !isAuthRequest) {
+      const isCordovaApp = typeof globalThis.cordova !== 'undefined'
+      const shouldRedirect = isCordovaApp
+        ? await clearAuthUserIfCurrent(error.config?.authTokenUsed, error.config?.authSessionRevision)
+        : (await clearAuthUser(), true)
+
+      if (shouldRedirect && window.location.hash !== '#/sign_in') {
         window.location.hash = '#/sign_in'
       }
     }

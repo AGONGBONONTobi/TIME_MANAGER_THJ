@@ -2,6 +2,12 @@ export const AUTH_STORAGE_KEY = 'time_manager_user'
 export const AUTH_TOKEN_STORAGE_KEY = 'time_manager_token'
 export const AUTH_CSRF_STORAGE_KEY = 'time_manager_csrf_token'
 
+let authSessionRevision = 0
+
+export function getAuthSessionRevision() {
+  return authSessionRevision
+}
+
 export function readAuthUser() {
   if (typeof window === 'undefined') {
     return null
@@ -92,6 +98,7 @@ async function writeSecureValue(key, value) {
 }
 
 export function writeAuthToken(token) {
+  authSessionRevision += 1
   return writeSecureValue(AUTH_TOKEN_STORAGE_KEY, token)
 }
 
@@ -116,6 +123,7 @@ export async function getAuthCsrfToken() {
 }
 
 export async function clearAuthUser() {
+  authSessionRevision += 1
   if (typeof window !== 'undefined') {
     window.localStorage.removeItem(AUTH_STORAGE_KEY)
     window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY)
@@ -130,6 +138,20 @@ export async function clearAuthUser() {
       await new Promise((resolve, reject) => storage.remove(resolve, reject, key))
     }
   }
+}
+
+export async function clearAuthUserIfCurrent(token, revision) {
+  if (!token || revision !== authSessionRevision) {
+    return false
+  }
+
+  const currentToken = await getAuthToken()
+  if (revision !== authSessionRevision || currentToken !== token) {
+    return false
+  }
+
+  await clearAuthUser()
+  return true
 }
 
 export function getCsrfToken() {

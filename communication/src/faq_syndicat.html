@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Time Manager — FAQ Représentants du Personnel & Syndicats</title>
+  
+<style>
+  @page {
+    size: A4;
+    margin: 18mm 16mm 20mm 16mm;
+    @bottom-right {
+      content: "Page " counter(page) " / " counter(pages);
+      font-size: 8pt;
+      color: #64748b;
+    }
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #1e293b;
+    background-color: #ffffff;
+    line-height: 1.55;
+    font-size: 10pt;
+    margin: 0;
+    padding: 0;
+  }
+
+  .header {
+    border-bottom: 2px solid #0f172a;
+    padding-bottom: 12px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+
+  .header-left h1 {
+    margin: 0;
+    font-size: 19pt;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.02em;
+  }
+
+  .header-left .subtitle {
+    margin: 4px 0 0;
+    font-size: 10pt;
+    color: #0284c7;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .header-right {
+    text-align: right;
+    font-size: 8.5pt;
+    color: #64748b;
+    line-height: 1.35;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 3px 8px;
+    font-size: 7.5pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-radius: 4px;
+    background-color: #e0f2fe;
+    color: #0369a1;
+  }
+
+  .badge-danger {
+    background-color: #fee2e2;
+    color: #b91c1c;
+  }
+
+  .badge-success {
+    background-color: #dcfce7;
+    color: #15803d;
+  }
+
+  .banner {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #0284c7;
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-bottom: 22px;
+  }
+
+  .banner p {
+    margin: 0;
+    font-size: 9.5pt;
+    color: #334155;
+  }
+
+  .banner strong {
+    color: #0f172a;
+  }
+
+  h2 {
+    color: #0f172a;
+    font-size: 13pt;
+    font-weight: 700;
+    margin-top: 24px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 4px;
+    page-break-after: avoid;
+  }
+
+  .qa-card {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    page-break-inside: avoid;
+  }
+
+  .qa-question {
+    font-weight: 700;
+    color: #0f172a;
+    font-size: 10.5pt;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: flex-start;
+  }
+
+  .qa-num {
+    background: #0f172a;
+    color: #ffffff;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 8pt;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 8px;
+    flex-shrink: 0;
+    line-height: 20px;
+    text-align: center;
+  }
+
+  .qa-answer {
+    color: #334155;
+    font-size: 9.5pt;
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  .qa-highlight {
+    font-weight: 600;
+    color: #0369a1;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 8.5pt;
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  th {
+    background-color: #0f172a;
+    color: #ffffff;
+    text-align: left;
+    padding: 8px 10px;
+    font-weight: 700;
+    font-size: 8.5pt;
+    letter-spacing: 0.03em;
+  }
+
+  td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: top;
+  }
+
+  tr:nth-child(even) td {
+    background-color: #f8fafc;
+  }
+
+  .text-center { text-align: center; }
+  .text-danger { color: #dc2626; font-weight: 700; }
+  .text-success { color: #16a34a; font-weight: 700; }
+
+  .page-break {
+    page-break-before: always;
+  }
+
+  .footer-note {
+    margin-top: 30px;
+    padding-top: 10px;
+    border-top: 1px solid #e2e8f0;
+    font-size: 8pt;
+    color: #64748b;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .timecode-badge {
+    background-color: #e2e8f0;
+    color: #1e293b;
+    font-weight: 700;
+    font-family: monospace;
+    font-size: 8pt;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  .quote-box {
+    background: #f1f5f9;
+    border-left: 3px solid #64748b;
+    padding: 8px 12px;
+    font-style: italic;
+    color: #334155;
+    margin: 6px 0;
+    font-size: 9pt;
+  }
+</style>
+
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      <div class="subtitle">Ville de Gotham • Direction des Ressources Humaines</div>
+      <h1>Time Manager — FAQ Syndicale</h1>
+    </div>
+    <div class="header-right">
+      <span class="badge">Document Officiel CSE</span><br>
+      Date : Octobre 2026<br>
+      Réf : TM-RH-SYN-04
+    </div>
+  </div>
+
+  <div class="banner">
+    <p><strong>Engagements de transparence :</strong> Ce document répond point par point aux préoccupations exprimées par les représentants du personnel concernant le déploiement de <em>Time Manager</em>. L'application a pour finalité unique l'enregistrement loyal et le juste paiement des heures travaillées, sans dispositif de flicage ni dérive algorithmique.</p>
+  </div>
+
+  <h2>1. Respect de la vie privée & Délimitation technique</h2>
+
+  <div class="qa-card">
+    <div class="qa-question">
+      <span class="qa-num">1</span>
+      L'application Time Manager géolocalise-t-elle les agents par GPS ?
+    </div>
+    <p class="qa-answer"><span class="qa-highlight">Non, formellement et techniquement.</span> L'application ne sollicite aucune permission GPS auprès du système d'exploitation et n'intègre aucun capteur de géolocalisation. Le pointage enregistre uniquement l'heure et la minute de validation. Les agents de terrain (voirie, gardiens, patrouilles) ne font l'objet d'aucun traçage spatial.</p>
+  </div>
+
+  <div class="qa-card">
+    <div class="qa-question">
+      <span class="qa-num">2</span>
+      Existe-t-il des dispositifs de surveillance active (captures d'écran, caméra, micro, frappe clavier) ?
+    </div>
+    <p class="qa-answer"><span class="qa-highlight">Aucun dispositif de surveillance active n'existe.</span> L'outil est strictement un cahier d'émargement numérique. Il n'accède ni à la caméra, ni au microphone, ni aux fichiers personnels, et ne capture jamais les écrans. Les permissions demandées sont limitées aux notifications locales pour les rappels de fin de quart.</p>
+  </div>
+
+  <div class="qa-card">
+    <div class="qa-question">
+      <span class="qa-num">3</span>
+      Les agents ne possédant pas de smartphone ou refusant d'utiliser leur appareil personnel sont-ils pénalisés ?
+    </div>
+    <p class="qa-answer"><span class="qa-highlight">Aucune pénalisation ni obligation sur appareil personnel.</span> L'application est accessible sur les smartphones de dotation, mais aussi depuis les postes fixes d'accueil et terminaux de poste de garde via navigateur. En cas d'impossibilité totale, le pointage assisté par le responsable de service reste garanti conformément aux accords conventionnels.</p>
+  </div>
+
+  <h2>2. Rémunération, Heures de Nuit & Heures Supplémentaires</h2>
+
+  <div class="qa-card">
+    <div class="qa-question">
+      <span class="qa-num">4</span>
+      Comment sont décomptées et majorées les heures de nuit (22h00 – 06h00) ?
+    </div>
+    <p class="qa-answer"><span class="qa-highlight">Le calcul est entièrement automatisé et auditable.</span> Toute minute prestée entre 22h00 et 06h00 est automatiquement ventilée en heures de nuit avec coefficient légal de majoration (×1,5). L'agent visualise immédiatement ses compteurs majorés sur son tableau de bord personnel, ce qui garantit la fin des contestations sur les fiches de paie.</p>
+  </div>
+
+  <div class="qa-card">
+    <div class="qa-question">
+      <span class="qa-num">5</span>
+      Comment sont comptabilisées les heures supplémentaires (Overtime) ?
+    </div>
+    <p class="qa-answer"><span class="qa-highlight">Au-delà du forfait hebdomadaire légal (35h),</span> les heures supplémentaires sont basculées dans le compteur d'overtime avec une majoration de 100% (coefficient ×2). Le système alerte automatiquement le manager pour prévenir la fatigue excessive et éviter d'enchaîner plus de 3 nuits consécutives.</p>
+  </div>
+
+  <div class="page-break"></div>
+
+  <h2>3. Droit à l'erreur, Régularisations & Traçabilité</h2>
+
+  <div class="qa-card">
+    <div class="qa-question">
+      <span class="qa-num">6</span>
+      Que se passe-t-il si un agent oublie de pointer ou fait une fausse manipulation ?
+    </div>
+    <p class="qa-answer"><span class="qa-highlight">Le droit à l'erreur est garanti sans pénalité.</span> L'agent dispose d'un module de « Demande de régularisation » permettant de renseigner son heure réelle et la raison de l'oubli. L'encadrement valide la demande sous 48h. Aucune retenue sur salaire automatique n'est possible sans échange préalable.</p>
+  </div>
+
+  <div class="qa-card">
+    <div class="qa-question">
+      <span class="qa-num">7</span>
+      Un manager peut-il modifier les horaires d'un agent unilatéralement et en secret ?
+    </div>
+    <p class="qa-answer"><span class="qa-highlight">Non, chaque modification est enregistrée dans un journal d'audit immuable.</span> L'historique conserve l'horodatage initial, la valeur modifiée, l'auteur de l'action et le motif fourni. L'agent est notifié de toute modification apportée à sa fiche et conserve un droit de recours auprès des RH.</p>
+  </div>
+
+  <h2>4. Accompagnement, Accessibilité & Données</h2>
+
+  <div class="qa-card">
+    <div class="qa-question">
+      <span class="qa-num">8</span>
+      Quel accompagnement est prévu pour les agents peu familiers du numérique ou en situation de handicap ?
+    </div>
+    <p class="qa-answer"><span class="qa-highlight">Formation courte et interface conforme RGAA / WCAG.</span> Des sessions de prise en main de 15 minutes sont organisées en début de quart. Une vidéo de 2 minutes et une fiche cartonnée synthétique sont remises. L'interface mobile prend en charge la synthèse vocale, les contrastes élevés (Thème sombre Gotham) et la navigation simplifiée par gros boutons tactiles.</p>
+  </div>
+
+  <div class="qa-card">
+    <div class="qa-question">
+      <span class="qa-num">9</span>
+      Les données sont-elles utilisées pour du scoring ou du micromanagement ?
+    </div>
+    <p class="qa-answer"><span class="qa-highlight">C'est formellement interdit par la charte de gouvernance.</span> Les données d'horodatage servent exclusivement à la paie et au contrôle du respect des temps de repos minimaux (11h consécutives obligatoires). Aucun module d'évaluation de la productivité, de classement d'agents ou de notation n'est connecté au système.</p>
+  </div>
+
+  <div class="qa-card">
+    <div class="qa-question">
+      <span class="qa-num">10</span>
+      Quelle est la politique de conservation et de sécurité des données (RGPD) ?
+    </div>
+    <p class="qa-answer"><span class="qa-highlight">Conservation stricte de 5 ans conformément au Code du travail.</span> L'accès aux données est compartimenté par contrôle d'accès strict (RBAC) : l'agent voit ses heures, le manager voit son équipe, et la DRH a la vision de contrôle paie. Les agents peuvent exercer leur droit de rectification et d'accès auprès du Délégué à la Protection des Données (DPO) de la Ville.</p>
+  </div>
+
+  <div class="footer-note">
+    <span>Direction des Relations Sociales & RH • Ville de Gotham</span>
+    <span>Document d'information syndicale validé</span>
+  </div>
+</body>
+</html>

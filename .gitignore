@@ -7,3 +7,6 @@ influxdata-archive_compat.key
 FETCH_HEAD
 *.bak
 security/reports/
+.docusaurus/
+docs/.docusaurus/
+docs/build/

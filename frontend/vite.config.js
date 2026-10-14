@@ -12,7 +12,9 @@ export default defineConfig(({ mode }) => ({
     ...(mode === 'mobile' ? [{
       name: 'cordova-runtime-script',
       transformIndexHtml(html) {
-        return html.replace('</body>', '    <script src="cordova.js"></script>\n  </body>')
+        return html
+          .replace('<body>', '<body class="is-mobile-app">')
+          .replace('</body>', '    <script src="cordova.js"></script>\n  </body>')
       },
     }] : []),
   ],

@@ -46,6 +46,10 @@ if (isMobileApp && splash) {
 
   if (globalThis.cordova) {
     document.addEventListener('deviceready', () => {
+      if (globalThis.navigator?.splashscreen?.hide) {
+        globalThis.navigator.splashscreen.hide()
+      }
+      splashStartedAt = performance.now()
       hideStartupSplash()
     }, { once: true })
     window.setTimeout(hideStartupSplash, 6000)

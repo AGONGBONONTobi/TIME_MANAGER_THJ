@@ -21,11 +21,13 @@
     <preference name="AndroidXEnabled" value="true" />
     <preference name="DisallowOverscroll" value="true" />
     <preference name="StatusBarStyle" value="lightcontent" />
-    <preference name="StatusBarBackgroundColor" value="#111827" />
-    <preference name="SplashScreenDelay" value="3000" />
+    <preference name="SplashScreenDelay" value="0" />
+    <preference name="AutoHideSplashScreen" value="true" />
+    <preference name="FadeSplashScreen" value="true" />
+    <preference name="FadeSplashScreenDuration" value="200" />
     <preference name="AndroidWindowSplashScreenBackground" value="#111827" />
     <preference name="AndroidWindowSplashScreenIconBackgroundColor" value="#111827" />
-    <preference name="AndroidWindowSplashScreenAnimatedIcon" value="resources/splash/gotham-splash.png" />
+    <preference name="AndroidWindowSplashScreenAnimatedIcon" value="resources/splash/bat-icon-splash.png" />
     <preference name="AndroidPersistentFileLocation" value="Compatibility" />
     <preference name="scheme" value="https" />
     <preference name="hostname" value="localhost" />

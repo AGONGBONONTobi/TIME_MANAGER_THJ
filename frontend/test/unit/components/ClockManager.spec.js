@@ -4,10 +4,11 @@ import ClockManager from '@/components/ClockManager.vue'
 import api from '@/services/api'
 import { queueClockEvent, synchronisePendingEvents } from '@/services/syncService'
 import { isOnline } from '@/services/networkService'
+import { listPendingEvents, loadWorkingTimes, saveWorkingTimes } from '@/services/localDatabase'
 
 vi.mock('@/services/api', () => ({
   default: {
-    getClocks: vi.fn(),
+    getWorkingTimes: vi.fn(),
     getUser: vi.fn(),
     clockInOut: vi.fn()
   }
@@ -26,6 +27,13 @@ vi.mock('@/utils/auth', () => ({
   readAuthUser: vi.fn(() => ({ id: 1, username: 'Joseph' }))
 }))
 
+vi.mock('@/services/localDatabase', async (importOriginal) => ({
+  ...(await importOriginal()),
+  listPendingEvents: vi.fn(),
+  loadWorkingTimes: vi.fn(),
+  saveWorkingTimes: vi.fn()
+}))
+
 function mountComponent() {
   return mount(ClockManager, {
     props: { userID: 1 },
@@ -34,18 +42,34 @@ function mountComponent() {
 }
 
 describe('ClockManager.vue', () => {
+  let pendingEvents
+
   beforeEach(() => {
     vi.clearAllMocks()
+    pendingEvents = []
     isOnline.mockReturnValue(true)
-    api.getClocks.mockResolvedValue({ data: { data: [] } })
+    api.getWorkingTimes.mockResolvedValue({ data: { data: [] } })
     api.getUser.mockResolvedValue({ data: { data: { id: 1, username: 'Joseph' } } })
+    listPendingEvents.mockImplementation(async () => pendingEvents)
+    loadWorkingTimes.mockResolvedValue(null)
+    saveWorkingTimes.mockResolvedValue(undefined)
+    queueClockEvent.mockImplementation(async ({ userId, eventType, occurredAt }) => {
+      const event = {
+        client_event_id: 'offline-event-1',
+        user_id: Number(userId),
+        event_type: eventType,
+        occurred_at: occurredAt
+      }
+      if (!isOnline()) pendingEvents.push(event)
+      return event
+    })
   })
 
   describe('load', () => {
-    it('fetches clocks on mount with the userID', async () => {
+    it('fetches working times on mount with the userID', async () => {
       mountComponent()
       await flushPromises()
-      expect(api.getClocks).toHaveBeenCalledWith(1)
+      expect(api.getWorkingTimes).toHaveBeenCalledWith(1)
     })
 
     it('loads the user name for the header', async () => {
@@ -54,7 +78,7 @@ describe('ClockManager.vue', () => {
       expect(api.getUser).toHaveBeenCalledWith(1)
     })
 
-    it('falls back to auth user when the API fails', async () => {
+    it('falls back to auth user when the profile API fails', async () => {
       api.getUser.mockRejectedValue(new Error('boom'))
       const wrapper = mountComponent()
       await flushPromises()
@@ -63,18 +87,18 @@ describe('ClockManager.vue', () => {
   })
 
   describe('status display', () => {
-    it('shows "Au repos" when latest clock status is false', async () => {
-      api.getClocks.mockResolvedValue({
-        data: { data: [{ id: 1, status: false, time: '2026-09-22T17:00:00Z' }] }
+    it('shows "Au repos" when the latest session is closed', async () => {
+      api.getWorkingTimes.mockResolvedValue({
+        data: { data: [{ id: 1, start: '2026-09-22T09:00:00Z', end: '2026-09-22T17:00:00Z' }] }
       })
       const wrapper = mountComponent()
       await flushPromises()
       expect(wrapper.text()).toContain('Au repos')
     })
 
-    it('shows "En cours" when latest clock status is true', async () => {
-      api.getClocks.mockResolvedValue({
-        data: { data: [{ id: 1, status: true, time: '2026-09-22T09:00:00Z' }] }
+    it('shows "En cours" when a session is active', async () => {
+      api.getWorkingTimes.mockResolvedValue({
+        data: { data: [{ id: 1, start: '2026-09-22T09:00:00Z', end: null }] }
       })
       const wrapper = mountComponent()
       await flushPromises()
@@ -90,57 +114,46 @@ describe('ClockManager.vue', () => {
   })
 
   describe('clock in/out — online', () => {
-    it('sends event_type=clock_in when currently clocked out', async () => {
-      api.clockInOut.mockResolvedValue({ data: {} })
+    it('queues clock-in when currently clocked out', async () => {
       const wrapper = mountComponent()
       await flushPromises()
       await wrapper.vm.clock()
 
-      expect(api.clockInOut).toHaveBeenCalledWith(
-        1,
-        expect.objectContaining({ event_type: 'clock_in', occurred_at: expect.any(String) })
+      expect(queueClockEvent).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: 1, eventType: 'clock_in' })
       )
     })
 
-    it('sends event_type=clock_out when currently clocked in', async () => {
-      api.getClocks.mockResolvedValue({
-        data: { data: [{ id: 1, status: true, time: '2026-09-22T09:00:00Z' }] }
+    it('queues clock-out when currently clocked in', async () => {
+      api.getWorkingTimes.mockResolvedValue({
+        data: { data: [{ id: 1, start: '2026-09-22T09:00:00Z', end: null }] }
       })
-      api.clockInOut.mockResolvedValue({ data: {} })
       const wrapper = mountComponent()
       await flushPromises()
       await wrapper.vm.clock()
 
-      expect(api.clockInOut).toHaveBeenCalledWith(
-        1,
-        expect.objectContaining({ event_type: 'clock_out' })
+      expect(queueClockEvent).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: 1, eventType: 'clock_out' })
       )
     })
 
-    it('refreshes the clocks list after a successful clock', async () => {
-      api.clockInOut.mockResolvedValue({ data: {} })
+    it('refreshes the session list after a successful clock', async () => {
       const wrapper = mountComponent()
       await flushPromises()
-      const callsBefore = api.getClocks.mock.calls.length
+      const callsBefore = api.getWorkingTimes.mock.calls.length
       await wrapper.vm.clock()
-      expect(api.getClocks.mock.calls.length).toBe(callsBefore + 1)
-    })
-
-    it('does not queue an event when online', async () => {
-      api.clockInOut.mockResolvedValue({ data: {} })
-      const wrapper = mountComponent()
-      await flushPromises()
-      await wrapper.vm.clock()
-      expect(queueClockEvent).not.toHaveBeenCalled()
+      expect(api.getWorkingTimes.mock.calls.length).toBe(callsBefore + 1)
     })
   })
 
   describe('clock in/out — offline', () => {
     beforeEach(() => {
       isOnline.mockReturnValue(false)
+      api.getWorkingTimes.mockRejectedValue(new Error('offline'))
+      loadWorkingTimes.mockResolvedValue([])
     })
 
-    it('queues the event instead of calling the API', async () => {
+    it('queues the event and updates the local clock state', async () => {
       const wrapper = mountComponent()
       await flushPromises()
       await wrapper.vm.clock()
@@ -149,48 +162,55 @@ describe('ClockManager.vue', () => {
         expect.objectContaining({ userId: 1, eventType: 'clock_in' })
       )
       expect(api.clockInOut).not.toHaveBeenCalled()
-    })
-
-    it('flips the local clock state so the button becomes Clock Out', async () => {
-      const wrapper = mountComponent()
-      await flushPromises()
-      expect(wrapper.vm.clockIn).toBe(false)
-      await wrapper.vm.clock()
       expect(wrapper.vm.clockIn).toBe(true)
+      expect(wrapper.vm.correctionMessage).toContain('hors ligne')
     })
 
-    it('shows the offline confirmation message', async () => {
+    it('uses the cached active session to queue clock-out', async () => {
+      loadWorkingTimes.mockResolvedValue([
+        { id: 22, start: '2026-09-22T09:00:00Z', end: null }
+      ])
       const wrapper = mountComponent()
       await flushPromises()
       await wrapper.vm.clock()
-      expect(wrapper.vm.errorMessage).toContain('hors ligne')
+
+      expect(queueClockEvent).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: 1, eventType: 'clock_out' })
+      )
+      expect(wrapper.vm.clockIn).toBe(false)
     })
   })
 
   describe('errors', () => {
-    it('shows "Une session est déjà en cours" on 409', async () => {
-      api.clockInOut.mockRejectedValue({
-        response: { data: { error: 'already clocked in' } }
-      })
+    it('shows a generic message when the event cannot be saved locally', async () => {
+      queueClockEvent.mockRejectedValue(new Error('storage failed'))
       const wrapper = mountComponent()
       await flushPromises()
       await wrapper.vm.clock()
-      expect(wrapper.vm.errorMessage).toBe('Une session est déjà en cours.')
+      expect(wrapper.vm.errorMessage).toContain('n’a pas pu être enregistré sur cet appareil')
     })
 
-    it('shows a generic message on other failures', async () => {
-      api.clockInOut.mockRejectedValue(new Error('boom'))
+    it('disables clocking when no server or local state is available', async () => {
+      api.getWorkingTimes.mockRejectedValue(new Error('offline'))
+      loadWorkingTimes.mockResolvedValue(null)
+      isOnline.mockReturnValue(false)
       const wrapper = mountComponent()
       await flushPromises()
-      await wrapper.vm.clock()
-      expect(wrapper.vm.errorMessage).toContain('n’a pas pu être enregistré')
+      expect(wrapper.vm.clockStateKnown).toBe(false)
+      expect(wrapper.find('.clock-button').attributes('disabled')).toBeDefined()
     })
 
-    it('shows a load error when fetching clocks fails', async () => {
-      api.getClocks.mockRejectedValue(new Error('boom'))
+    it('restores the active session from cache while offline', async () => {
+      api.getWorkingTimes.mockRejectedValue(new Error('offline'))
+      loadWorkingTimes.mockResolvedValue([
+        { id: 22, start: '2026-09-22T09:00:00Z', end: null }
+      ])
+      isOnline.mockReturnValue(false)
       const wrapper = mountComponent()
       await flushPromises()
-      expect(wrapper.vm.errorMessage).toBe('Impossible de charger les pointages.')
+      expect(wrapper.vm.clockIn).toBe(true)
+      expect(wrapper.vm.clockStateKnown).toBe(true)
+      expect(wrapper.text()).toContain('Historique hors ligne')
     })
   })
 

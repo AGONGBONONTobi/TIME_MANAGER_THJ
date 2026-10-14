@@ -3,6 +3,9 @@ import { mount, flushPromises } from '@vue/test-utils'
 import User from '@/components/User.vue'
 import api from '@/services/api'
 import { readAuthUser } from '@/utils/auth'
+import { loadWorkingTimes, listPendingEvents, saveWorkingTimes } from '@/services/localDatabase'
+import { queueClockEvent } from '@/services/syncService'
+import { isOnline } from '@/services/networkService'
 
 vi.mock('@/services/api', () => ({
   default: {
@@ -20,6 +23,21 @@ vi.mock('@/utils/auth', () => ({
   readAuthUser: vi.fn(() => ({ id: 1, username: 'Joseph' }))
 }))
 
+vi.mock('@/services/localDatabase', async (importOriginal) => ({
+  ...(await importOriginal()),
+  loadWorkingTimes: vi.fn(),
+  listPendingEvents: vi.fn(),
+  saveWorkingTimes: vi.fn()
+}))
+
+vi.mock('@/services/syncService', () => ({
+  queueClockEvent: vi.fn()
+}))
+
+vi.mock('@/services/networkService', () => ({
+  isOnline: vi.fn(() => true)
+}))
+
 const POLICY = {
   weekly_hours: 35,
   work_days: 5,
@@ -35,6 +53,7 @@ function mountComponent() {
 
 describe('User.vue', () => {
   let intervalSpy
+  let pendingEvents
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -45,6 +64,21 @@ describe('User.vue', () => {
     api.getUser.mockResolvedValue({ data: { data: { id: 1, username: 'Joseph' } } })
     api.getWorkingTimes.mockResolvedValue({ data: { data: [] } })
     api.getUserWorkPolicy.mockResolvedValue({ data: { data: null } })
+    loadWorkingTimes.mockResolvedValue(null)
+    pendingEvents = []
+    listPendingEvents.mockImplementation(async () => pendingEvents)
+    saveWorkingTimes.mockResolvedValue(undefined)
+    isOnline.mockReturnValue(true)
+    queueClockEvent.mockImplementation(async ({ userId, eventType, occurredAt }) => {
+      const event = {
+        client_event_id: 'offline-event-1',
+        user_id: userId,
+        event_type: eventType,
+        occurred_at: occurredAt
+      }
+      pendingEvents.push(event)
+      return event
+    })
   })
 
   afterEach(() => {
@@ -97,6 +131,32 @@ describe('User.vue', () => {
       const wrapper = mountComponent()
       await flushPromises()
       expect(wrapper.vm.errorMessage).toContain('Impossible de charger')
+    })
+
+    it('uses cached working times when the API is unavailable', async () => {
+      api.getWorkingTimes.mockRejectedValue(new Error('network unavailable'))
+      loadWorkingTimes.mockResolvedValue([
+        { id: 5, start: '2026-09-22T09:00:00Z', end: null }
+      ])
+      const wrapper = mountComponent()
+      await flushPromises()
+      expect(wrapper.vm.activeSession.id).toBe(5)
+      expect(wrapper.vm.errorMessage).toContain('Historique hors ligne')
+    })
+
+    it('restores queued clock events over the cached server snapshot', async () => {
+      api.getWorkingTimes.mockRejectedValue(new Error('network unavailable'))
+      loadWorkingTimes.mockResolvedValue([])
+      pendingEvents = [{
+        client_event_id: 'queued-start',
+        user_id: 1,
+        event_type: 'clock_in',
+        occurred_at: '2026-09-22T09:00:00Z'
+      }]
+      const wrapper = mountComponent()
+      await flushPromises()
+      expect(wrapper.vm.isClockedIn).toBe(true)
+      expect(wrapper.vm.activeSession.pending).toBe(true)
     })
 
     it('sets up a 1-second interval', () => {
@@ -304,21 +364,25 @@ describe('User.vue', () => {
 
   // ─── Clock in/out ─────────────────────────────────────────────
   describe('toggleClock', () => {
-    it('calls clockInOut with the userId then reloads', async () => {
-      api.clockInOut.mockResolvedValue({ data: {} })
+    it('queues the event and updates the dashboard session optimistically', async () => {
       const wrapper = mountComponent()
       await flushPromises()
-      vi.clearAllMocks()
-      api.getWorkingTimes.mockResolvedValue({ data: { data: [] } })
-
       await wrapper.vm.toggleClock()
 
-      expect(api.clockInOut).toHaveBeenCalledWith(1)
-      expect(api.getWorkingTimes).toHaveBeenCalled()
+      expect(queueClockEvent).toHaveBeenCalledWith(expect.objectContaining({
+        userId: 1,
+        eventType: 'clock_in',
+        occurredAt: expect.any(String)
+      }))
+      expect(api.clockInOut).not.toHaveBeenCalled()
+      expect(wrapper.vm.isClockedIn).toBe(true)
+      expect(saveWorkingTimes).toHaveBeenLastCalledWith(1, expect.arrayContaining([
+        expect.objectContaining({ id: 'local-offline-event-1', pending: true })
+      ]))
     })
 
     it('shows the "already clocked in" message on 409', async () => {
-      api.clockInOut.mockRejectedValue({
+      queueClockEvent.mockRejectedValue({
         response: { data: { error: 'already clocked in' } }
       })
       const wrapper = mountComponent()
@@ -328,19 +392,34 @@ describe('User.vue', () => {
     })
 
     it('shows a generic error on other failures', async () => {
-      api.clockInOut.mockRejectedValue(new Error('boom'))
+      queueClockEvent.mockRejectedValue(new Error('boom'))
       const wrapper = mountComponent()
       await flushPromises()
       await wrapper.vm.toggleClock()
-      expect(wrapper.vm.errorMessage).toContain("n'a pas pu être enregistré")
+      expect(wrapper.vm.errorMessage).toContain('n’a pas pu être enregistré sur cet appareil')
     })
 
     it('clears isClocking after the call', async () => {
-      api.clockInOut.mockResolvedValue({ data: {} })
       const wrapper = mountComponent()
       await flushPromises()
       await wrapper.vm.toggleClock()
       expect(wrapper.vm.isClocking).toBe(false)
+    })
+
+    it('queues a clock-out event when an offline session is active', async () => {
+      isOnline.mockReturnValue(false)
+      api.getWorkingTimes.mockResolvedValue({
+        data: { data: [{ id: 8, start: '2026-09-22T09:00:00Z', end: null }] }
+      })
+      const wrapper = mountComponent()
+      await flushPromises()
+      await wrapper.vm.toggleClock()
+
+      expect(queueClockEvent).toHaveBeenCalledWith(expect.objectContaining({
+        eventType: 'clock_out'
+      }))
+      expect(wrapper.vm.isClockedIn).toBe(false)
+      expect(wrapper.vm.clockMessage).toContain('hors ligne')
     })
   })
 

@@ -166,3 +166,26 @@ export async function loadWorkingTimes(userId) {
     return null
   }
 }
+
+export function applyPendingClockEvents(workingTimes, userId, pendingEvents) {
+  const sessions = [...workingTimes]
+  const events = pendingEvents
+    .filter((event) => Number(event.user_id) === Number(userId))
+    .sort((a, b) => a.occurred_at.localeCompare(b.occurred_at))
+
+  for (const event of events) {
+    const activeIndex = sessions.findIndex((session) => !session.end)
+    if (event.event_type === 'clock_in' && activeIndex === -1) {
+      sessions.push({
+        id: `local-${event.client_event_id}`,
+        start: event.occurred_at,
+        end: null,
+        pending: true
+      })
+    } else if (event.event_type === 'clock_out' && activeIndex !== -1) {
+      sessions[activeIndex] = { ...sessions[activeIndex], end: event.occurred_at, pending: true }
+    }
+  }
+
+  return sessions.sort((a, b) => new Date(b.start) - new Date(a.start))
+}

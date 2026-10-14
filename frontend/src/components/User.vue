@@ -1,6 +1,14 @@
 <script>
 import api from '../services/api'
 import { readAuthUser, writeAuthUser } from '../utils/auth'
+import {
+  applyPendingClockEvents,
+  loadWorkingTimes as loadCachedWorkingTimes,
+  listPendingEvents,
+  saveWorkingTimes
+} from '../services/localDatabase'
+import { queueClockEvent } from '../services/syncService'
+import { isOnline } from '../services/networkService'
 import OnboardingWizard from './OnboardingWizard.vue'
 
 export default {
@@ -15,8 +23,11 @@ export default {
       workingTimes: [],
       isLoading: true,
       isClocking: false,
+      clockStateKnown: false,
       errorMessage: '',
+      clockMessage: '',
       timerId: null,
+      syncListener: null,
       showOnboarding: false
     }
   },
@@ -58,6 +69,8 @@ export default {
       api.getUserWorkPolicy(this.userId).then((response) => { this.workPolicy = response.data.data }).catch(() => { this.workPolicy = null })
     }
     this.loadWorkingTimes()
+    this.syncListener = () => this.refreshAfterSync()
+    window.addEventListener('time-manager-sync', this.syncListener)
     this.timerId = window.setInterval(() => { this.now = new Date() }, 1000)
 
     // Onboarding au premier login
@@ -65,7 +78,10 @@ export default {
       setTimeout(() => { this.showOnboarding = true }, 800)
     }
   },
-  beforeUnmount() { window.clearInterval(this.timerId) },
+  beforeUnmount() {
+    window.clearInterval(this.timerId)
+    if (this.syncListener) window.removeEventListener('time-manager-sync', this.syncListener)
+  },
   methods: {
     async getUser() {
       if (!this.userId) {
@@ -76,6 +92,16 @@ export default {
       const response = await api.getUser(this.userId)
       this.user = response.data.data || this.currentUser
       return this.user
+    },
+    async refreshAfterSync() {
+      await this.loadWorkingTimes()
+      const pendingEvents = await listPendingEvents()
+      const hasPendingClockEvents = pendingEvents.some(
+        (event) => Number(event.user_id) === Number(this.userId)
+      )
+      if (this.clockMessage && !hasPendingClockEvents) {
+        this.clockMessage = 'Pointage enregistré et synchronisé.'
+      }
     },
     async createUser(user) {
       const response = await api.createUser(user)
@@ -98,14 +124,69 @@ export default {
       }
 
       this.isLoading = true; this.errorMessage = ''
-      try { const response = await api.getWorkingTimes(this.userId); this.workingTimes = (response.data.data || []).sort((a, b) => new Date(b.start) - new Date(a.start)) }
-      catch (error) { this.errorMessage = 'Impossible de charger les pointages. Vérifiez que l\'API est démarrée.'; console.error(error) }
-      finally { this.isLoading = false }
+      try {
+        try {
+          const response = await api.getWorkingTimes(this.userId)
+          this.workingTimes = (response.data.data || []).sort((a, b) => new Date(b.start) - new Date(a.start))
+          this.clockStateKnown = true
+        } catch (error) {
+          const cached = await loadCachedWorkingTimes(this.userId)
+          if (cached) {
+            this.workingTimes = cached
+            this.clockStateKnown = true
+            this.errorMessage = 'Historique hors ligne. Dernière version enregistrée affichée.'
+          } else {
+            this.clockStateKnown = false
+            this.errorMessage = isOnline()
+              ? 'Impossible de charger les pointages. Vérifiez que l’API est démarrée.'
+              : 'Aucun historique disponible hors ligne.'
+          }
+          console.error(error)
+        }
+
+        const pendingEvents = await listPendingEvents()
+        if (pendingEvents.some((event) => Number(event.user_id) === Number(this.userId))) {
+          this.clockStateKnown = true
+        }
+        this.workingTimes = applyPendingClockEvents(this.workingTimes, this.userId, pendingEvents)
+        await saveWorkingTimes(this.userId, this.workingTimes)
+      } catch (error) {
+        console.error('Impossible de restaurer les pointages hors ligne.', error)
+      } finally {
+        this.isLoading = false
+      }
     },
     async toggleClock() {
-      this.isClocking = true; this.errorMessage = ''
-      try { await api.clockInOut(this.userId); await this.loadWorkingTimes() }
-      catch (error) { this.errorMessage = error.response?.data?.error === 'already clocked in' ? 'Une session est déjà en cours.' : 'Le pointage n\'a pas pu être enregistré.' }
+      if (!this.clockStateKnown) {
+        this.errorMessage = 'Connectez-vous au réseau une première fois pour charger votre état de pointage.'
+        return
+      }
+      this.isClocking = true
+      this.errorMessage = ''
+      this.clockMessage = ''
+      try {
+        const eventType = this.isClockedIn ? 'clock_out' : 'clock_in'
+        const occurredAt = new Date().toISOString()
+        const event = await queueClockEvent({ userId: this.userId, eventType, occurredAt })
+        const stillPending = (await listPendingEvents()).some(
+          (pendingEvent) => pendingEvent.client_event_id === event.client_event_id
+        )
+        if (stillPending) {
+          this.workingTimes = applyPendingClockEvents(this.workingTimes, this.userId, [event])
+          await saveWorkingTimes(this.userId, this.workingTimes)
+          this.clockMessage = isOnline()
+            ? 'Pointage enregistré sur cet appareil. Synchronisation en attente.'
+            : 'Pointage enregistré hors ligne. Il sera synchronisé automatiquement au retour du réseau.'
+        } else {
+          await this.loadWorkingTimes()
+          this.clockMessage = 'Pointage enregistré et synchronisé.'
+        }
+      } catch (error) {
+        this.errorMessage = error.response?.data?.error === 'already clocked in'
+          ? 'Une session est déjà en cours.'
+          : 'Le pointage n’a pas pu être enregistré sur cet appareil.'
+        console.error(error)
+      }
       finally { this.isClocking = false }
     },
     durationInMinutes(session) { return Math.max(0, Math.round((new Date(session.end || this.now) - new Date(session.start)) / 60000)) },
@@ -161,8 +242,9 @@ export default {
   <section class="dashboard-page">
     <div class="welcome-row"><div><p class="dashboard-kicker">TABLEAU DE BORD</p><h1>Bonjour, {{ displayName }}</h1><p class="dashboard-date">{{ todayLabel }}</p></div></div>
     <p v-if="errorMessage" class="api-error" role="alert" aria-live="assertive">{{ errorMessage }} <button type="button" @click="loadWorkingTimes">Réessayer</button></p>
+    <p v-if="clockMessage" class="clock-confirmation" role="status" aria-live="polite">{{ clockMessage }}</p>
     <div class="dashboard-grid">
-      <article class="attendance-card" :class="{ active: isClockedIn }"><div class="card-heading"><div><p class="card-kicker">PRÉSENCE DU JOUR</p><h2>{{ isClockedIn ? 'Votre journée est en cours' : 'Prêt à commencer ?' }}</h2></div><span class="status-pill" :class="{ active: isClockedIn }"><i></i>{{ isClockedIn ? 'Actif' : 'Inactif' }}</span></div><div class="attendance-main"><div class="session-mark" :class="{ active: isClockedIn }"></div><div><strong class="attendance-state">{{ isClockedIn ? 'Clock In enregistré' : 'Aucune session active' }}</strong><p>{{ isClockedIn ? `Depuis ${formatSessionTime(activeSession.start)} · ${elapsedLabel}` : 'Enregistrez votre arrivée pour démarrer le chronomètre.' }}</p></div></div><div v-if="isClockedIn" class="session-timer"><span>Temps écoulé</span><strong>{{ elapsedLabel }}</strong></div><button class="clock-action" :class="{ 'clock-out': isClockedIn }" type="button" :disabled="isClocking || isLoading" @click="toggleClock"><span>{{ isClocking ? 'Enregistrement…' : isClockedIn ? 'Clock Out' : 'Clock In' }}</span><b>→</b></button></article>
+      <article class="attendance-card" :class="{ active: isClockedIn }"><div class="card-heading"><div><p class="card-kicker">PRÉSENCE DU JOUR</p><h2>{{ isClockedIn ? 'Votre journée est en cours' : 'Prêt à commencer ?' }}</h2></div><span class="status-pill" :class="{ active: isClockedIn }"><i></i>{{ isClockedIn ? 'Actif' : 'Inactif' }}</span></div><div class="attendance-main"><div class="session-mark" :class="{ active: isClockedIn }"></div><div><strong class="attendance-state">{{ isClockedIn ? 'Clock In enregistré' : 'Aucune session active' }}</strong><p>{{ isClockedIn ? `Depuis ${formatSessionTime(activeSession.start)} · ${elapsedLabel}` : 'Enregistrez votre arrivée pour démarrer le chronomètre.' }}</p></div></div><p v-if="!clockStateKnown" class="offline-state-notice">Connectez-vous une première fois pour pouvoir pointer hors ligne.</p><div v-if="isClockedIn" class="session-timer"><span>Temps écoulé</span><strong>{{ elapsedLabel }}</strong></div><button class="clock-action" :class="{ 'clock-out': isClockedIn }" type="button" :disabled="isClocking || isLoading || !clockStateKnown" @click="toggleClock"><span>{{ isClocking ? 'Enregistrement…' : isClockedIn ? 'Clock Out' : 'Clock In' }}</span><b>→</b></button></article>
       <article class="live-time-card"><div class="card-heading"><div><p class="card-kicker">HEURE LOCALE</p><h2>Il est actuellement</h2></div><span class="live-dot"><i></i> Live</span></div><div class="flip-clock" aria-label="Heure actuelle"><template v-for="(part, partIndex) in timeParts" :key="partIndex"><div class="flip-group"><span v-for="(digit, digitIndex) in part.split('')" :key="`${partIndex}-${digitIndex}-${digit}`" class="flip-digit">{{ digit }}</span></div><span v-if="partIndex < 2" class="flip-separator">:</span></template></div><p class="clock-caption">Votre fuseau horaire local</p></article>
     </div>
     <section class="quota-section"><div class="section-title"><div><p class="card-kicker">OBJECTIF HEBDOMADAIRE</p><h2>Votre quota de la semaine</h2></div><strong class="quota-ratio">{{ quotaPercentage }}% <small>/ 70%</small></strong></div><div class="quota-content"><div class="quota-ring" :class="quotaColor" :style="{ '--progress': `${quotaPercentage}%` }"><span>{{ quotaPercentage }}<small>%</small></span></div><div class="quota-copy"><strong>{{ weekHoursLabel }} travaillées cette semaine</strong><p>{{ quotaMessage }}</p><div class="quota-bar"><span :style="{ width: `${quotaPercentage}%` }"></span><i></i></div><div class="quota-scale"><span>0 h</span><span>Seuil : {{ targetHours ? `${(targetHours * 0.7).toFixed(1)} h` : 'Non configuré' }}</span><span>{{ targetHours ? `${targetHours} h` : 'Non configuré' }}</span></div></div></div></section>

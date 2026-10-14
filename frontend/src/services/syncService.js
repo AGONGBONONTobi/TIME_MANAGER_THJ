@@ -2,8 +2,10 @@ import api from './api'
 import { enqueueEvent, listPendingEvents, removeEvent, updateEvent } from './localDatabase'
 import { isOnline } from './networkService'
 import { notifySync } from './nativeFeatures'
+import { readAuthUser } from '../utils/auth'
 
 let isSyncing = false
+let syncRequested = false
 
 function publish() {
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('time-manager-sync'))
@@ -19,46 +21,64 @@ export async function queueClockEvent({ userId, eventType, occurredAt }) {
   }
   await enqueueEvent(event)
   publish()
-  if (isOnline()) await synchronisePendingEvents()
+  if (isOnline()) {
+    synchronisePendingEvents().catch((error) => {
+      console.error('Impossible de synchroniser les pointages en attente.', error)
+    })
+  }
   return event
 }
 
 export async function synchronisePendingEvents() {
-  if (!isOnline() || isSyncing) return
+  if (!isOnline()) return
+  if (isSyncing) {
+    syncRequested = true
+    return
+  }
+  const userId = readAuthUser()?.id
+  if (!userId) return
+
   isSyncing = true
+  const attemptedEventIds = new Set()
   try {
-    const events = await listPendingEvents()
     let synchronisedCount = 0
-    const batchSize = 10
-    for (let offset = 0; offset < events.length; offset += batchSize) {
-      const batch = events.slice(offset, offset + batchSize)
-      for (const event of batch) {
-      await updateEvent(event, { status: 'syncing' })
-      try {
-        await api.clockInOut(event.user_id, {
-          client_event_id: event.client_event_id,
-          event_type: event.event_type,
-          occurred_at: event.occurred_at
-        })
-        await removeEvent(event)
-        synchronisedCount += 1
-      } catch (error) {
-        await updateEvent(event, {
-          status: 'failed',
-          retry_count: (event.retry_count || 0) + 1,
-          last_error: error?.message || 'Synchronisation impossible'
-        })
-        if (!error?.response || error.response.status >= 500) break
+    do {
+      syncRequested = false
+      const events = (await listPendingEvents()).filter((event) =>
+        Number(event.user_id) === Number(userId) && !attemptedEventIds.has(event.client_event_id)
+      )
+
+      for (const event of events) {
+        attemptedEventIds.add(event.client_event_id)
+        await updateEvent(event, { status: 'syncing' })
+        try {
+          await api.clockInOut(event.user_id, {
+            client_event_id: event.client_event_id,
+            event_type: event.event_type,
+            occurred_at: event.occurred_at
+          })
+          await removeEvent(event)
+          synchronisedCount += 1
+        } catch (error) {
+          await updateEvent(event, {
+            status: 'failed',
+            retry_count: (event.retry_count || 0) + 1,
+            last_error: error?.message || 'Synchronisation impossible'
+          })
+          if (!error?.response || error.response.status >= 500) break
+        }
+        if (synchronisedCount > 0) notifySync(`${synchronisedCount} pointage(s) synchronisé(s).`)
       }
-      if (synchronisedCount > 0) notifySync(`${synchronisedCount} pointage(s) synchronisé(s).`)
-      }
-    }
+    } while (syncRequested && isOnline())
   } finally {
     isSyncing = false
+    syncRequested = false
     publish()
   }
 }
 
 export async function pendingEventCount() {
-  return (await listPendingEvents()).length
+  const userId = readAuthUser()?.id
+  if (!userId) return 0
+  return (await listPendingEvents()).filter((event) => Number(event.user_id) === Number(userId)).length
 }

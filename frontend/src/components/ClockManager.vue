@@ -4,6 +4,12 @@ import { readAuthUser } from '../utils/auth'
 import { queueClockEvent, synchronisePendingEvents } from '../services/syncService'
 import { isOnline } from '../services/networkService'
 import { vibrateSuccess } from '../services/nativeFeatures'
+import {
+  applyPendingClockEvents,
+  listPendingEvents,
+  loadWorkingTimes,
+  saveWorkingTimes
+} from '../services/localDatabase'
 
 export default {
   name: 'ClockManager',
@@ -15,6 +21,7 @@ export default {
       clockIn: false,
       isLoading: false,
       isClocking: false,
+      clockStateKnown: false,
       errorMessage: '',
       userName: '',
       showCorrectionForm: false,
@@ -58,38 +65,66 @@ export default {
       this.isLoading = true
       this.errorMessage = ''
       try {
-        const response = await api.getClocks(this.userID)
-        this.clocks = response.data.data || []
-        const latestClock = this.clocks[0]
-        this.clockIn = Boolean(latestClock?.status)
-        this.startDateTime = this.clockIn ? latestClock.time : null
+        const response = await api.getWorkingTimes(this.userID)
+        const workingTimes = response.data.data || []
+        try {
+          await saveWorkingTimes(this.userID, workingTimes)
+        } catch (error) {
+          console.warn('Impossible de sauvegarder le cache des pointages.', error)
+        }
+        await this.applyWorkingTimeState(workingTimes)
       } catch {
-        this.errorMessage = 'Impossible de charger les pointages.'
+        const cached = await loadWorkingTimes(this.userID)
+        await this.applyWorkingTimeState(cached || [], cached !== null)
+        this.errorMessage = cached
+          ? 'Historique hors ligne. Dernière version enregistrée affichée.'
+          : 'Aucun historique de pointage disponible hors ligne.'
       } finally {
         this.isLoading = false
       }
     },
+    async applyWorkingTimeState(workingTimes, hasSnapshot = true) {
+      const pendingEvents = await listPendingEvents()
+      const userHasPendingEvents = pendingEvents.some(
+        (event) => Number(event.user_id) === Number(this.userID)
+      )
+      const effectiveWorkingTimes = applyPendingClockEvents(workingTimes, this.userID, pendingEvents)
+      const activeSession = effectiveWorkingTimes.find((session) => !session.end)
+
+      this.clocks = effectiveWorkingTimes
+      this.clockIn = Boolean(activeSession)
+      this.startDateTime = activeSession?.start || null
+      this.clockStateKnown = hasSnapshot || userHasPendingEvents
+    },
     async clock() {
+      if (!this.clockStateKnown) {
+        this.errorMessage = 'Connectez-vous au réseau une première fois pour charger votre état de pointage.'
+        return
+      }
       this.isClocking = true
       this.errorMessage = ''
       this.correctionMessage = ''
       try {
         const eventType = this.clockIn ? 'clock_out' : 'clock_in'
         const occurredAt = new Date().toISOString()
-        if (!this.isOnline) {
-          await queueClockEvent({ userId: this.userID, eventType, occurredAt })
-          this.clockIn = eventType === 'clock_in'
-          this.startDateTime = this.clockIn ? occurredAt : null
-          this.errorMessage = 'Pointage enregistré hors ligne. Il sera synchronisé automatiquement.'
-          return
-        }
-        await api.clockInOut(this.userID, { event_type: eventType, occurred_at: occurredAt })
-        vibrateSuccess()
+        const event = await queueClockEvent({ userId: this.userID, eventType, occurredAt })
+        const pendingEvents = await listPendingEvents()
+        const stillPending = pendingEvents.some(
+          (pendingEvent) => pendingEvent.client_event_id === event.client_event_id
+        )
         await this.refresh()
+        if (stillPending) {
+          this.correctionMessage = this.isOnline
+            ? 'Pointage enregistré sur cet appareil. Synchronisation en attente.'
+            : 'Pointage enregistré hors ligne. Il sera synchronisé automatiquement au retour du réseau.'
+        } else {
+          vibrateSuccess()
+          this.correctionMessage = 'Pointage enregistré et synchronisé.'
+        }
       } catch (error) {
         this.errorMessage = error.response?.data?.error === 'already clocked in'
           ? 'Une session est déjà en cours.'
-          : 'Le pointage n’a pas pu être enregistré.'
+          : 'Le pointage n’a pas pu être enregistré sur cet appareil.'
       } finally {
         this.isClocking = false
       }
@@ -110,7 +145,7 @@ export default {
         this.showCorrectionForm = false
         this.correctionForm = { date: '', time: '', status: true, reason: '' }
         this.correctionMessage = 'Demande de correction envoyée avec succès.'
-      } catch (error) {
+      } catch {
         this.errorMessage = 'Erreur lors de l\'envoi de la demande.'
       } finally {
         this.isLoading = false
@@ -139,10 +174,11 @@ export default {
       <p v-if="clockIn">Session commencée le {{ formatDateTime(startDateTime) }}</p>
       <p v-else>Aucune période de travail en cours.</p>
       <p class="network-status" :class="{ offline: !isOnline }">{{ isOnline ? 'En ligne' : 'Hors ligne' }}</p>
+      <p v-if="!clockStateKnown" class="error" role="status">Connectez-vous une première fois pour pouvoir pointer hors ligne.</p>
       <p v-if="errorMessage" class="error" role="alert">{{ errorMessage }}</p>
       <p v-if="correctionMessage" class="success" role="alert">{{ correctionMessage }}</p>
       <div class="actions">
-        <button class="clock-button" :class="{ stop: clockIn }" type="button" :disabled="isLoading || isClocking" @click="clock">{{ isClocking ? 'Enregistrement…' : clockIn ? 'Clock Out' : 'Clock In' }}</button>
+        <button class="clock-button" :class="{ stop: clockIn }" type="button" :disabled="isLoading || isClocking || !clockStateKnown" @click="clock">{{ isClocking ? 'Enregistrement…' : clockIn ? 'Clock Out' : 'Clock In' }}</button>
         <button class="refresh-button" type="button" :disabled="isLoading" @click="refresh">Actualiser</button>
         <button class="forgot-button" type="button" @click="showCorrectionForm = !showCorrectionForm">Oubli de pointage ?</button>
       </div>

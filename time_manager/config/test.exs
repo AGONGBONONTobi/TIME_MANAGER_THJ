@@ -1,5 +1,10 @@
 import Config
 
+# Tests use a deterministic, non-production signer unless CI provides its own.
+config :joken,
+  default_signer:
+    System.get_env("JWT_SECRET", "test-only-jwt-secret-never-use-in-production")
+
 # Configure your database
 #
 # The MIX_TEST_PARTITION environment variable can be used

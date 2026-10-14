@@ -1,5 +1,8 @@
 import Config
 
+# Local-only signer; production reads its secret at runtime.
+config :joken, default_signer: System.get_env("JWT_SECRET", "dev-only-jwt-secret-never-use-in-production")
+
 # Configure your database
 config :time_manager, TimeManager.Repo,
   username: "postgres",

@@ -21,6 +21,15 @@ if System.get_env("PHX_SERVER") do
 end
 
 if config_env() == :prod do
+  jwt_secret =
+    System.get_env("JWT_SECRET") ||
+      raise """
+      environment variable JWT_SECRET is missing.
+      Set a strong secret before starting the production release.
+      """
+
+  config :joken, default_signer: jwt_secret
+
   database_url =
     System.get_env("DATABASE_URL") ||
       raise """

@@ -23,11 +23,11 @@
     <preference name="StatusBarStyle" value="lightcontent" />
     <preference name="SplashScreenDelay" value="0" />
     <preference name="AutoHideSplashScreen" value="true" />
-    <preference name="FadeSplashScreen" value="true" />
-    <preference name="FadeSplashScreenDuration" value="200" />
-    <preference name="AndroidWindowSplashScreenBackground" value="#111827" />
-    <preference name="AndroidWindowSplashScreenIconBackgroundColor" value="#111827" />
-    <preference name="AndroidWindowSplashScreenAnimatedIcon" value="resources/splash/bat-icon-splash.png" />
+    <preference name="FadeSplashScreen" value="false" />
+    <preference name="ShowSplashScreenSpinner" value="false" />
+    <preference name="AndroidWindowSplashScreenBackground" value="#0b0f19" />
+    <preference name="AndroidWindowSplashScreenIconBackgroundColor" value="#0b0f19" />
+    <preference name="AndroidWindowSplashScreenAnimatedIcon" value="resources/splash/transparent.png" />
     <preference name="AndroidPersistentFileLocation" value="Compatibility" />
     <preference name="scheme" value="https" />
     <preference name="hostname" value="localhost" />

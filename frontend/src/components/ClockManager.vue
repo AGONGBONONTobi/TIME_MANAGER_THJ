@@ -217,6 +217,12 @@ export default {
 .form-group { margin-bottom: 1rem; display: flex; flex-direction: column; gap: 4px; }
 .form-group label { font-size: .75rem; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
 .form-group input, .form-group select, .form-group textarea { padding: .5rem; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: .85rem; }
-.network-status { width: fit-content; padding: 4px 8px; color: #276749 !important; background: #f0fff4; border-radius: 999px; font-size: .7rem !important; font-weight: 800; }.network-status.offline { color: #9b2c2c !important; background: #fff5f5; }
-@media (max-width: 680px) { .clock-page { width: min(100% - 1rem, 760px); margin-top: 3rem; }.clock-header { display: block; }.back-link { display: inline-block; margin-top: 1.5rem; } }
+@media (max-width: 680px) {
+  .clock-page { width: 100%; max-width: 100%; margin-top: 1rem; box-sizing: border-box; }
+  .clock-header { display: block; }
+  .back-link { display: inline-block; margin-top: 1rem; }
+  .clock-card { padding: 1.25rem 1rem; }
+  .actions { flex-direction: column; }
+  .forgot-button { margin-left: 0; }
+}
 </style>

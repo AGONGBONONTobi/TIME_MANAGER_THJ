@@ -253,10 +253,35 @@ export default {
       </div>
       <div v-if="teams.length" class="teams-grid">
         <article v-for="team in teams" :key="team.id" class="team-card">
-          <div class="team-card-heading"><div><h3>{{ team.name }}</h3><span>{{ team.members.length }} membre{{ team.members.length > 1 ? 's' : '' }}</span></div><div style="display:flex;gap:6px;align-items:center;"><button class="team-clock-btn" type="button" @click="clockTeam(team)">🦇 Pointer</button><button class="team-id team-open" type="button" @click="openTeam(team)">Voir ↗</button></div></div>
-          <ul v-if="team.members.length" class="member-list"><li v-for="member in team.members" :key="member.id"><span class="member-avatar">{{ member.username.slice(0, 1).toUpperCase() }}</span><span><b>{{ member.username }}</b><small>{{ member.email }}</small></span><i :class="{ inactive: !member.active }">{{ member.active ? 'Actif' : 'Inactif' }}</i><button class="remove-member" type="button" @click="removeMember(team, member)">Retirer</button></li></ul>
+          <div class="team-card-heading">
+            <div class="team-heading-info">
+              <h3>{{ team.name }}</h3>
+              <span>{{ team.members.length }} membre{{ team.members.length > 1 ? 's' : '' }}</span>
+            </div>
+            <div class="team-heading-actions">
+              <button class="team-clock-btn" type="button" @click="clockTeam(team)">🦇 Pointer</button>
+              <button class="team-id team-open" type="button" @click="openTeam(team)">Voir ↗</button>
+            </div>
+          </div>
+          <ul v-if="team.members.length" class="member-list">
+            <li v-for="member in team.members" :key="member.id">
+              <span class="member-avatar">{{ member.username.slice(0, 1).toUpperCase() }}</span>
+              <span class="member-info">
+                <b>{{ member.username }}</b>
+                <small :title="member.email">{{ member.email }}</small>
+              </span>
+              <i :class="{ inactive: !member.active }">{{ member.active ? 'Actif' : 'Inactif' }}</i>
+              <button class="remove-member" type="button" @click="removeMember(team, member)">Retirer</button>
+            </li>
+          </ul>
           <p v-else class="empty-members">Aucun membre affecté.</p>
-          <form class="add-member-form" @submit.prevent="addMember(team)"><select v-model="memberToAdd[team.id]" aria-label="Choisir un employé" :disabled="!availableMembers(team).length"><option value="">{{ availableMembers(team).length ? 'Ajouter un employé…' : 'Tous les employés sont déjà affectés' }}</option><option v-for="user in availableMembers(team)" :key="user.id" :value="user.id">{{ user.username }} · {{ user.email }}</option></select><button type="submit" :disabled="!availableMembers(team).length">Ajouter</button></form>
+          <form class="add-member-form" @submit.prevent="addMember(team)">
+            <select v-model="memberToAdd[team.id]" aria-label="Choisir un employé" :disabled="!availableMembers(team).length">
+              <option value="">{{ availableMembers(team).length ? 'Ajouter un employé…' : 'Tous les employés sont déjà affectés' }}</option>
+              <option v-for="user in availableMembers(team)" :key="user.id" :value="user.id">{{ user.username }} · {{ user.email }}</option>
+            </select>
+            <button type="submit" :disabled="!availableMembers(team).length">Ajouter</button>
+          </form>
         </article>
       </div>
       <p v-else class="empty-teams">Aucune équipe ne vous est encore attribuée. L’administrateur peut en créer une et vous désigner comme manager.</p>
@@ -457,7 +482,7 @@ export default {
 </template>
 
 <style scoped>
-.dashboard-page { max-width: 1120px; margin: 0 auto; color: #252b38; }
+.dashboard-page { max-width: 1120px; width: 100%; margin: 0 auto; color: #252b38; min-width: 0; box-sizing: border-box; }
 .demo-notice { margin: -8px 0 20px; padding: 11px 14px; color: #6f5a1b; font-size: 12px; background: #fff8df; border-left: 3px solid #f0ad32; }
 .welcome-row, .section-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
 .welcome-row { align-items: flex-end; margin-bottom: 24px; }
@@ -483,8 +508,8 @@ export default {
 .alert-banner b { color: #b6444d; }
 
 /* Stats */
-.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
-.stat-card { position: relative; padding: 18px; background: #fff; border: 1px solid #eaedf2; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 25px #29375608; }
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; min-width: 0; }
+.stat-card { position: relative; padding: 18px; background: #fff; border: 1px solid #eaedf2; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 25px #29375608; min-width: 0; }
 .stat-card p { margin: 0 0 12px; color: #8c96a5; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
 .stat-card strong { color: #293140; font: 800 28px 'Manrope', sans-serif; letter-spacing: -.04em; }
 .stat-card::before { content: ''; position: absolute; inset: 0 0 auto; height: 3px; }
@@ -494,8 +519,34 @@ export default {
 .stat-card.red::before    { background: #e85d65; }
 
 /* Sections */
-.team-section, .chart-section { margin-top: 18px; padding: 24px; background: #fff; border: 1px solid #eaedf2; border-radius: 12px; box-shadow: 0 8px 25px #29375608; }
-.teams-section { margin-top: 18px; padding: 24px; background: #fff; border: 1px solid #eaedf2; border-radius: 12px; box-shadow: 0 8px 25px #29375608; }.team-count, .team-id { color: #8c96a5; font-size: 11px; }.teams-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 18px; }.team-card { padding: 16px; background: #f8f9fc; border: 1px solid #edf0f4; border-radius: 10px; }.team-card-heading { display: flex; justify-content: space-between; gap: 12px; }.team-card h3 { margin: 0; color: #293140; font: 700 16px 'Manrope', sans-serif; }.team-card-heading span { display: block; margin-top: 5px; color: #8c96a5; font-size: 11px; }.member-list { display: grid; gap: 9px; margin: 16px 0 0; padding: 0; list-style: none; }.member-list li { display: flex; align-items: center; gap: 9px; padding-top: 9px; border-top: 1px solid #e9edf3; }.member-avatar { display: grid; width: 28px; height: 28px; place-items: center; color: #655bd0; font-size: 11px; font-weight: 800; background: #e9e7ff; border-radius: 50%; }.member-list li > span:nth-child(2) { display: grid; flex: 1; gap: 2px; }.member-list b { color: #303847; font-size: 12px; }.member-list small { color: #8c96a5; font-size: 10px; }.member-list i { color: #43ae76; font-size: 10px; font-style: normal; font-weight: 700; }.member-list i.inactive { color: #e85d65; }.remove-member { padding: 3px 0; color: #e85d65; font-size: 10px; font-weight: 700; background: transparent; border: 0; cursor: pointer; }.remove-member:hover { text-decoration: underline; }.add-member-form { display: flex; gap: 8px; margin-top: 14px; }.add-member-form select { min-width: 0; flex: 1; padding: 7px; color: #5d6675; font-size: 11px; background: #fff; border: 1px solid #e7eaf0; border-radius: 6px; }.add-member-form select:disabled { color: #9aa3af; background: #f1f3f6; }.add-member-form button { padding: 7px 10px; color: #fff; font-size: 11px; font-weight: 700; background: #786be7; border: 0; border-radius: 6px; cursor: pointer; }.add-member-form button:disabled { cursor: not-allowed; opacity: .45; }.empty-members, .empty-teams { color: #8c96a5; font-size: 12px; }.empty-members { margin: 16px 0 0; }.empty-teams { margin: 18px 0 0; }
+.team-section, .chart-section { margin-top: 18px; padding: 24px; background: #fff; border: 1px solid #eaedf2; border-radius: 12px; box-shadow: 0 8px 25px #29375608; min-width: 0; box-sizing: border-box; }
+.teams-section { margin-top: 18px; padding: 24px; background: #fff; border: 1px solid #eaedf2; border-radius: 12px; box-shadow: 0 8px 25px #29375608; min-width: 0; box-sizing: border-box; }
+.team-count, .team-id { color: #8c96a5; font-size: 11px; }
+.teams-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 18px; min-width: 0; }
+.team-card { padding: 16px; background: #f8f9fc; border: 1px solid #edf0f4; border-radius: 10px; min-width: 0; overflow: hidden; box-sizing: border-box; }
+.team-card-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap; }
+.team-heading-info { min-width: 0; flex: 1 1 120px; }
+.team-heading-actions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+.team-card h3 { margin: 0; color: #293140; font: 700 16px 'Manrope', sans-serif; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.team-card-heading span { display: block; margin-top: 5px; color: #8c96a5; font-size: 11px; }
+.member-list { display: grid; gap: 9px; margin: 16px 0 0; padding: 0; list-style: none; min-width: 0; }
+.member-list li { display: flex; align-items: center; gap: 9px; padding-top: 9px; border-top: 1px solid #e9edf3; min-width: 0; }
+.member-avatar { flex-shrink: 0; display: grid; width: 28px; height: 28px; place-items: center; color: #655bd0; font-size: 11px; font-weight: 800; background: #e9e7ff; border-radius: 50%; }
+.member-info { display: grid; flex: 1 1 0%; min-width: 0; gap: 2px; }
+.member-info b { color: #303847; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.member-info small { color: #8c96a5; font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; display: block; }
+.member-list i { flex-shrink: 0; color: #43ae76; font-size: 10px; font-style: normal; font-weight: 700; white-space: nowrap; }
+.member-list i.inactive { color: #e85d65; }
+.remove-member { flex-shrink: 0; padding: 3px 0; color: #e85d65; font-size: 10px; font-weight: 700; background: transparent; border: 0; cursor: pointer; white-space: nowrap; }
+.remove-member:hover { text-decoration: underline; }
+.add-member-form { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.add-member-form select { min-width: 0; flex: 1 1 160px; max-width: 100%; padding: 7px; color: #5d6675; font-size: 11px; background: #fff; border: 1px solid #e7eaf0; border-radius: 6px; }
+.add-member-form select:disabled { color: #9aa3af; background: #f1f3f6; }
+.add-member-form button { flex-shrink: 0; padding: 7px 10px; color: #fff; font-size: 11px; font-weight: 700; background: #786be7; border: 0; border-radius: 6px; cursor: pointer; }
+.add-member-form button:disabled { cursor: not-allowed; opacity: .45; }
+.empty-members, .empty-teams { color: #8c96a5; font-size: 12px; }
+.empty-members { margin: 16px 0 0; }
+.empty-teams { margin: 18px 0 0; }
 .section-title h2 { margin: 0; color: #293140; font: 700 17px 'Manrope', sans-serif; letter-spacing: -.035em; }
 .actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .btn-primary, .btn-secondary { padding: 10px 16px; font-size: 12px; font-weight: 700; border-radius: 7px; cursor: pointer; border: 0; }
@@ -504,11 +555,11 @@ export default {
 .btn-primary:disabled, .btn-secondary:disabled { opacity: .45; cursor: not-allowed; }
 
 /* Tableau équipe */
-.table-wrap { margin-top: 18px; overflow-x: auto; }
+.table-wrap { margin-top: 18px; overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; max-width: 100%; display: block; }
 .team-table { display: grid; grid-template-columns: 36px 1.7fr .8fr .8fr 1fr 1.2fr; align-items: center; gap: 12px; min-width: 720px; min-height: 62px; padding: 0 4px; color: #5d6675; font-size: 12px; border-bottom: 1px solid #edf0f4; }
 .team-table.head { min-height: 34px; color: #9aa3af; font-size: 10px; font-weight: 700; text-transform: uppercase; }
 .team-table input[type="checkbox"] { width: 16px; height: 16px; accent-color: #786be7; cursor: pointer; }
-.cell-name { display: flex; flex-direction: column; gap: 3px; }
+.cell-name { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .cell-name b { color: #303847; font-size: 12px; }
 .cell-name small { color: #9aa3af; font-size: 10px; }
 .badge-missed { display: inline-flex; align-items: center; gap: 5px; margin-top: 2px; padding: 2px 8px; color: #b6444d; font-size: 9px; font-weight: 700; background: #fff0f1; border-radius: 99px; width: fit-content; }
@@ -524,28 +575,64 @@ export default {
 .link-btn:hover { text-decoration: underline; }
 
 /* Graphique à barres */
-.bar-chart { margin-top: 18px; display: flex; flex-direction: column; gap: 12px; }
-.bar-row { display: grid; grid-template-columns: 150px 1fr; align-items: center; gap: 12px; }
-.bar-label { color: #5d6675; font-size: 12px; font-weight: 600; }
-.bar-track { position: relative; height: 26px; background: #f2f4f8; border-radius: 6px; overflow: hidden; }
+.bar-chart { margin-top: 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.bar-row { display: grid; grid-template-columns: 150px 1fr; align-items: center; gap: 12px; min-width: 0; }
+.bar-label { color: #5d6675; font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar-track { position: relative; height: 26px; background: #f2f4f8; border-radius: 6px; overflow: hidden; min-width: 0; }
 .bar-fill { display: flex; align-items: center; justify-content: flex-end; height: 100%; padding-right: 10px; color: #fff; font-size: 11px; font-weight: 700; background: linear-gradient(90deg, #7c70e7, #5796e7); border-radius: 6px; transition: width .4s ease; min-width: 48px; }
 .bar-fill span { white-space: nowrap; }
 
 /* Responsive */
-@media (max-width: 850px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 850px) {
+  .dashboard-page { width: 100%; max-width: 100%; min-width: 0; }
+  .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @media (max-width: 760px) {
   .welcome-row { display: block; }
   .clock-box { align-items: flex-start; margin-top: 14px; }
   .flip-clock { justify-content: flex-start; }
-  .section-title { flex-direction: column; align-items: stretch; }
-  .bar-row { grid-template-columns: 110px 1fr; }
+  .section-title { flex-direction: column; align-items: stretch; gap: 10px; }
+  .bar-row { grid-template-columns: 80px 1fr; }
   .teams-grid { grid-template-columns: 1fr; }
+  .team-section, .chart-section, .teams-section { padding: 18px 14px; }
+  .team-card { padding: 14px 12px; }
 }
 @media (max-width: 450px) {
   .stats-grid { grid-template-columns: 1fr; }
-  .team-section, .chart-section { padding: 17px; }
+  .team-section, .chart-section, .teams-section { padding: 15px 12px; }
   .flip-digit { width: 24px; height: 34px; font-size: 18px; }
-  .bar-row { grid-template-columns: 90px 1fr; }
+  .bar-row { grid-template-columns: 70px 1fr; }
 }
-.team-clock-btn { padding: 4px 10px; color: #fff; font-size: 10px; font-weight: 700; background: #786be7; border: 0; border-radius: 99px; cursor: pointer; transition: background .15s; }.team-clock-btn:hover { background: #5f54c8; }.team-open { padding: 0; color: #786be7; background: transparent; border: 0; cursor: pointer; }.team-open:hover { text-decoration: underline; }.team-modal-backdrop { position: fixed; z-index: 60; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(20, 25, 35, .65); }.team-modal { position: relative; width: min(100%, 650px); max-height: min(88vh, 760px); overflow-y: auto; padding: 30px; background: #fff; border-radius: 16px; box-shadow: 0 24px 80px rgba(0, 0, 0, .22); }.modal-close { position: absolute; top: 12px; right: 14px; width: 34px; height: 34px; color: #7d8796; background: transparent; border: 0; font-size: 25px; cursor: pointer; }.team-modal h2 { margin: 0; color: #293140; font: 800 30px 'Manrope', sans-serif; letter-spacing: -.06em; }.team-description { margin: 8px 0 20px; color: #7d8796; font-size: 13px; line-height: 1.55; }.modal-label { color: #8a7cf0; font-size: 10px; font-weight: 800; letter-spacing: .12em; }.member-pills { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 9px; }.member-pills span { padding: 6px 10px; color: #5148a7; font-size: 11px; font-weight: 700; background: #eeedff; border-radius: 99px; }.member-pills .muted-pill { color: #8c96a5; background: #f1f3f6; }.tasks-heading { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-top: 26px; padding-top: 20px; border-top: 1px solid #edf0f4; }.tasks-heading h3 { margin: 4px 0 0; color: #293140; font: 700 18px 'Manrope', sans-serif; }.tasks-heading > span { color: #43ae76; font-size: 11px; font-weight: 700; }.task-form { display: grid; gap: 8px; margin-top: 14px; padding: 13px; background: #f8f9fc; border: 1px solid #edf0f4; border-radius: 10px; }.task-form input, .task-form textarea { width: 100%; padding: 9px 10px; color: #303847; background: #fff; border: 1px solid #e4e8ef; border-radius: 6px; font-size: 12px; resize: vertical; }.task-form-bottom { display: flex; gap: 8px; }.task-form-bottom input { flex: 1; }.task-form button { padding: 8px 12px; color: #fff; background: #786be7; border: 0; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; }.tasks-list { display: grid; gap: 8px; margin-top: 14px; }.task-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid #edf0f4; border-radius: 9px; }.task-item.completed { background: #f3fbf6; border-color: #d7efdf; }.task-check { display: grid; width: 22px; height: 22px; flex: 0 0 auto; place-items: center; color: #fff; background: #fff; border: 2px solid #b8c0cc; border-radius: 6px; cursor: pointer; }.task-item.completed .task-check { background: #43ae76; border-color: #43ae76; }.task-item > div { min-width: 0; }.task-item strong { color: #303847; font-size: 13px; }.task-item.completed strong { color: #71917b; text-decoration: line-through; }.task-item p { margin: 4px 0 0; color: #7d8796; font-size: 11px; line-height: 1.4; }.task-item small { display: block; margin-top: 6px; color: #9aa3af; font-size: 10px; }.tasks-state { margin-top: 15px; padding: 18px; color: #8c96a5; font-size: 12px; text-align: center; background: #f8f9fc; border-radius: 8px; }
+.team-clock-btn { padding: 4px 10px; color: #fff; font-size: 10px; font-weight: 700; background: #786be7; border: 0; border-radius: 99px; cursor: pointer; transition: background .15s; white-space: nowrap; }
+.team-clock-btn:hover { background: #5f54c8; }
+.team-open { padding: 0; color: #786be7; background: transparent; border: 0; cursor: pointer; white-space: nowrap; }
+.team-open:hover { text-decoration: underline; }
+.team-modal-backdrop { position: fixed; z-index: 60; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(20, 25, 35, .65); }
+.team-modal { position: relative; width: min(100%, 650px); max-height: min(88vh, 760px); overflow-y: auto; padding: 24px 20px; background: #fff; border-radius: 16px; box-shadow: 0 24px 80px rgba(0, 0, 0, .22); box-sizing: border-box; }
+.modal-close { position: absolute; top: 12px; right: 14px; width: 34px; height: 34px; color: #7d8796; background: transparent; border: 0; font-size: 25px; cursor: pointer; }
+.team-modal h2 { margin: 0; color: #293140; font: 800 24px 'Manrope', sans-serif; letter-spacing: -.05em; }
+.team-description { margin: 8px 0 20px; color: #7d8796; font-size: 13px; line-height: 1.55; }
+.modal-label { color: #8a7cf0; font-size: 10px; font-weight: 800; letter-spacing: .12em; }
+.member-pills { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 9px; }
+.member-pills span { padding: 6px 10px; color: #5148a7; font-size: 11px; font-weight: 700; background: #eeedff; border-radius: 99px; }
+.member-pills .muted-pill { color: #8c96a5; background: #f1f3f6; }
+.tasks-heading { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-top: 26px; padding-top: 20px; border-top: 1px solid #edf0f4; }
+.tasks-heading h3 { margin: 4px 0 0; color: #293140; font: 700 18px 'Manrope', sans-serif; }
+.tasks-heading > span { color: #43ae76; font-size: 11px; font-weight: 700; }
+.task-form { display: grid; gap: 8px; margin-top: 14px; padding: 13px; background: #f8f9fc; border: 1px solid #edf0f4; border-radius: 10px; box-sizing: border-box; }
+.task-form input, .task-form textarea { width: 100%; padding: 9px 10px; color: #303847; background: #fff; border: 1px solid #e4e8ef; border-radius: 6px; font-size: 12px; resize: vertical; box-sizing: border-box; }
+.task-form-bottom { display: flex; gap: 8px; }
+.task-form-bottom input { flex: 1; min-width: 0; }
+.task-form button { padding: 8px 12px; color: #fff; background: #786be7; border: 0; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.tasks-list { display: grid; gap: 8px; margin-top: 14px; }
+.task-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid #edf0f4; border-radius: 9px; }
+.task-item.completed { background: #f3fbf6; border-color: #d7efdf; }
+.task-check { display: grid; width: 22px; height: 22px; flex: 0 0 auto; place-items: center; color: #fff; background: #fff; border: 2px solid #b8c0cc; border-radius: 6px; cursor: pointer; }
+.task-item.completed .task-check { background: #43ae76; border-color: #43ae76; }
+.task-item > div { min-width: 0; }
+.task-item strong { color: #303847; font-size: 13px; }
+.task-item.completed strong { color: #71917b; text-decoration: line-through; }
+.task-item p { margin: 4px 0 0; color: #7d8796; font-size: 11px; line-height: 1.4; }
+.task-item small { display: block; margin-top: 6px; color: #9aa3af; font-size: 10px; }
+.tasks-state { margin-top: 15px; padding: 18px; color: #8c96a5; font-size: 12px; text-align: center; background: #f8f9fc; border-radius: 8px; }
 </style>

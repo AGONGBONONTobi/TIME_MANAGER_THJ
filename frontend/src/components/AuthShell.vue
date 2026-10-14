@@ -50,8 +50,12 @@ export default {
 <style scoped>
 .auth-page {
   display: grid;
-  grid-template-columns: minmax(390px, 0.86fr) minmax(480px, 1.14fr);
+  grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr);
   min-height: 100vh;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
   padding: 18px;
   color: #17202c;
   background: #f4f6f8;
@@ -65,6 +69,7 @@ export default {
   padding: clamp(24px, 5vw, 76px) clamp(24px, 7vw, 108px);
   background: #fff;
   border-radius: 24px 0 0 24px;
+  box-sizing: border-box;
 }
 
 .auth-brand {
@@ -183,8 +188,9 @@ export default {
 :deep(.auth-switch a:hover) { text-decoration: underline; }
 
 @media (max-width: 900px) {
-  .auth-page { grid-template-columns: 1fr; padding: 0; }
-  .auth-form-side { min-height: 100vh; border-radius: 0; }
+  .auth-page { grid-template-columns: 1fr; padding: 0; width: 100%; max-width: 100%; }
+  .auth-form-side { min-height: 100vh; border-radius: 0; padding: clamp(24px, 6vw, 40px) 16px; width: 100%; box-sizing: border-box; }
+  .auth-form-content { width: 100%; max-width: 100%; padding: 24px 0; }
   .auth-city-side { display: none; }
 }
 

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Time Manager Technical Stack</title>
+    <style>
+      :root {
+        --bg: #07131d;
+        --panel: #101d2a;
+        --panel-2: #162b39;
+        --line: rgba(255,255,255,0.09);
+        --text: #edf3f8;
+        --muted: #a7bac8;
+        --primary: #7dd3fc;
+        --secondary: #8b5cf6;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        font-family: Inter, "Segoe UI", sans-serif;
+        background: radial-gradient(circle at top left, rgba(125,211,252,0.15), transparent 30%), var(--bg);
+        color: var(--text);
+        line-height: 1.7;
+      }
+
+      a { color: var(--primary); text-decoration: none; }
+
+      .container {
+        width: min(1100px, calc(100% - 32px));
+        margin: 0 auto;
+      }
+
+      header {
+        border-bottom: 1px solid var(--line);
+        background: rgba(7,19,29,0.7);
+        backdrop-filter: blur(10px);
+      }
+
+      .nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        min-height: 72px;
+      }
+
+      .brand {
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      main {
+        padding: 52px 0 80px;
+      }
+
+      .hero {
+        margin-bottom: 26px;
+      }
+
+      h1 {
+        font-size: clamp(2.5rem, 5vw, 4rem);
+        letter-spacing: -0.06em;
+        margin: 0 0 16px;
+      }
+
+      .subtitle {
+        color: var(--muted);
+        max-width: 760px;
+        font-size: 1.08rem;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(260px, 1fr));
+        gap: 22px;
+      }
+
+      .card {
+        background: linear-gradient(180deg, rgba(18, 35, 49, 0.96), rgba(15, 27, 35, 0.96));
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        padding: 22px;
+        box-shadow: 0 18px 40px rgba(5,12,18,0.32);
+      }
+
+      .card h2 {
+        margin-top: 0;
+        margin-bottom: 12px;
+        font-size: 1.3rem;
+      }
+
+      ul {
+        padding-left: 18px;
+        color: var(--muted);
+      }
+
+      li + li { margin-top: 8px; }
+
+      .footer {
+        color: var(--muted);
+        padding: 12px 0 48px;
+      }
+
+      @media (max-width: 700px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+
+        .nav {
+          flex-direction: column;
+          justify-content: center;
+          padding: 18px 0;
+          gap: 8px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="container nav">
+        <div class="brand">Time Manager</div>
+        <nav>
+          <a href="index.html">← Overview</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <section class="hero">
+        <h1>Technical stack deep dive</h1>
+        <p class="subtitle">
+          This application is intentionally split into separate layers so that business logic, user interaction, mobile distribution,
+          and infrastructure concerns remain clear and manageable throughout development.
+        </p>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <h2>Backend responsibilities</h2>
+          <ul>
+            <li>Handles authentication, authorization, and session validation.</li>
+            <li>Exposes JSON endpoints for user, team, and time-related workflows.</li>
+            <li>Applies business rules in the Elixir context and controller boundaries.</li>
+            <li>Persists data with PostgreSQL through Ecto migrations and schemas.</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <h2>Frontend responsibilities</h2>
+          <ul>
+            <li>Provides interactive dashboards and role-aware navigation.</li>
+            <li>Uses Vue Router for page transitions and route protection.</li>
+            <li>Consumes backend APIs with Axios and formats results for the user.</li>
+            <li>Uses responsive styling for desktop and tablet operation.</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <h2>Mobile responsibilities</h2>
+          <ul>
+            <li>Package and deploy a Cordova Android app with native shell support.</li>
+            <li>Provide immediate local feedback with splash screens and device notifications.</li>
+            <li>Use local storage and secure storage patterns for offline-first mechanics.</li>
+            <li>Support network-aware, device-aware user interactions.</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <h2>Infrastructure responsibilities</h2>
+          <ul>
+            <li>Containerizes services with Docker Compose for predictable local and cloud setup.</li>
+            <li>Runs PostgreSQL as the central application data store.</li>
+            <li>Provides gateway and firewall protections in production layers.</li>
+            <li>Maintains environment configuration, secrets, and deployment variables.</li>
+          </ul>
+        </article>
+      </section>
+    </main>
+
+    <footer class="container footer">
+      Technical architecture summary for the Time Manager platform.
+    </footer>
+  </body>
+</html>

@@ -12,6 +12,19 @@ defmodule TimeManager.Accounts do
     Repo.all(User)
   end
 
+  def list_users_of_manager(manager_id) do
+    from(u in User,
+      join: tm in TimeManager.Teams.TeamMembership,
+      on: tm.user_id == u.id,
+      join: t in TimeManager.Teams.Team,
+      on: t.id == tm.team_id and t.manager_id == ^manager_id,
+      where: tm.active == true,
+      select: u,
+      distinct: true
+    )
+    |> Repo.all()
+  end
+
   def mark_onboarded(user) do
     user
     |> Ecto.Changeset.change(onboarded_at: DateTime.utc_now() |> DateTime.truncate(:second))

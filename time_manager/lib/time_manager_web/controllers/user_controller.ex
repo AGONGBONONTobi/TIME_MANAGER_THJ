@@ -35,11 +35,24 @@ defmodule TimeManagerWeb.UserController do
   )
 
   def index(conn, params) do
-    users = Accounts.get_users_by_filters(params)
+    current = conn.assigns.current_user
+
+    users =
+      case current.role do
+        "admin" ->
+          Accounts.get_users_by_filters(params)
+
+        "manager" ->
+          Accounts.list_users_of_manager(current.id)
+          |> filter_by_params(params)
+
+        _ ->
+          [current]
+      end
 
     conn
     |> put_status(200)
-    |> render(:index, users: users)
+    |> json(%{data: Enum.map(users, &public_user/1)})
   end
 
   def create(conn, %{"user" => user_params}) do
@@ -165,5 +178,34 @@ defmodule TimeManagerWeb.UserController do
           |> json(%{error: "Invalid role"})
         end
     end
+  end
+
+  defp filter_by_params(users, params) do
+    Enum.filter(users, fn user ->
+      matches? = true
+
+      matches? =
+        if params["email"], do: user.email == params["email"] and matches?, else: matches?
+
+      matches? =
+        if params["username"],
+          do: user.username == params["username"] and matches?,
+          else: matches?
+
+      matches?
+    end)
+  end
+
+  defp public_user(user) do
+    %{
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+      contract_start: user.contract_start,
+      contract_end: user.contract_end,
+      onboarded_at: user.onboarded_at
+    }
   end
 end

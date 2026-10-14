@@ -10,25 +10,32 @@ defmodule TimeManager.Teams do
   def get_team(id), do: Repo.get(Team, id) |> preload_team()
 
   def create_team(attrs) do
-  %Team{}
-  |> Team.changeset(attrs)
-  |> Repo.insert()
-  |> case do
-    {:ok, team} -> {:ok, preload_team(team)}
-    error -> error
-  end
-end
+    attrs =
+      attrs
+      |> Map.new(fn
+        {k, v} when is_atom(k) -> {Atom.to_string(k), v}
+        {k, v} -> {k, v}
+      end)
+      |> Map.put_new("created_by_id", Map.get(attrs, "manager_id") || Map.get(attrs, :manager_id))
 
-def update_team(%Team{} = team, attrs) do
-  team
-  |> Team.changeset(attrs)
-  |> Repo.update()
-  |> case do
-    {:ok, updated} -> {:ok, preload_team(updated)}
-    error -> error
+    %Team{}
+    |> Team.changeset(attrs)
+    |> Repo.insert()
+    |> case do
+      {:ok, team} -> {:ok, preload_team(team)}
+      error -> error
+    end
   end
-end
 
+  def update_team(%Team{} = team, attrs) do
+    team
+    |> Team.changeset(attrs)
+    |> Repo.update()
+    |> case do
+      {:ok, updated} -> {:ok, preload_team(updated)}
+      error -> error
+    end
+  end
 
   def delete_team(%Team{} = team), do: Repo.delete(team)
 
@@ -45,12 +52,18 @@ end
     end
   end
 
-  def list_tasks(team_id), do: Repo.all(from task in TeamTask, where: task.team_id == ^team_id, order_by: [asc: task.status, asc: task.due_date, desc: task.inserted_at])
+  def list_tasks(team_id),
+    do:
+      Repo.all(
+        from task in TeamTask,
+          where: task.team_id == ^team_id,
+          order_by: [asc: task.status, asc: task.due_date, desc: task.inserted_at]
+      )
 
   def create_task(team_id, user_id, attrs) do
     attrs
     |> Map.merge(%{"team_id" => team_id, "created_by_id" => user_id})
-    |> then(&%TeamTask{} |> TeamTask.changeset(&1) |> Repo.insert())
+    |> then(&(%TeamTask{} |> TeamTask.changeset(&1) |> Repo.insert()))
   end
 
   def update_task_status(task_id, status) when status in ["pending", "completed"] do

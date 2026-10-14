@@ -37,9 +37,15 @@ defmodule TimeManagerWeb.ConnCase do
   end
 
   @doc "Authenticates a conn the same way the app does: JWT cookie + matching CSRF header."
-  def auth_conn(conn, %{id: user_id}, csrf_token \\ "test-token") do
+  def auth_conn(conn, %{id: user_id} = user, csrf_token \\ "test-token") do
+    role = Map.get(user, :role) || Map.get(user, "role") || "employee"
+
     {:ok, token, _claims} =
-      TimeManager.Token.generate_and_sign(%{"user_id" => user_id, "csrf_token" => csrf_token})
+      TimeManager.Token.generate_and_sign(%{
+        "user_id" => user_id,
+        "role" => role,
+        "csrf_token" => csrf_token
+      })
 
     conn
     |> Plug.Test.put_req_cookie("auth_token", token)

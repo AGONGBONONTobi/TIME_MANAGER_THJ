@@ -7,18 +7,162 @@
     <meta name="theme-color" content="#1d2430">
     <meta name="description" content="Time Manager — suivi accessible des horaires de travail.">
     <title>Time Manager</title>
-    <style>#startup-splash{z-index:10000;box-sizing:border-box;padding:max(48px, env(safe-area-inset-top)) 32px max(64px, env(safe-area-inset-bottom));color:#fff;opacity:1;background:linear-gradient(#09121f0f 20%,#09121fe0 100%),url(/gotham-city.jpg) 50%/cover no-repeat,#111827;place-items:end start;font-family:system-ui,sans-serif;transition:opacity .35s;display:none;position:fixed;inset:0}#startup-splash.is-hidden{opacity:0;pointer-events:none}#startup-splash p,#startup-splash h1{margin:0}#startup-splash p{letter-spacing:.2em;font-size:.8rem;font-weight:700}#startup-splash h1{letter-spacing:.08em;margin-top:8px;font-size:clamp(2.5rem,12vw,4rem);font-weight:800}</style>
-    <script type="module" crossorigin src="/assets/index-Chk3GsX3.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-B41Jphmg.css">
+    <style>
+      :root {
+        --splash-bg: rgba(8, 15, 22, 0.7);
+        --splash-panel: rgba(11, 15, 19, 0.72);
+        --splash-line: rgba(255,255,255,0.14);
+        --splash-text: #f8f9fb;
+        --splash-muted: rgba(248,249,251,0.82);
+        --splash-accent: #dfe7eb;
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body {
+        margin: 0;
+        min-height: 100%;
+        background: #0a1018;
+        font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      }
+
+      body {
+        min-height: 100vh;
+      }
+
+      #startup-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+        display: grid;
+        place-items: end start;
+        padding: max(48px, env(safe-area-inset-top)) 28px max(48px, env(safe-area-inset-bottom));
+        background:
+          linear-gradient(180deg, rgba(7, 17, 26, 0.16) 0%, rgba(7,17,26,0.72) 100%),
+          url('/gotham-city.jpg') center/cover no-repeat,
+          #0f1724;
+        color: var(--splash-text);
+        transition: opacity 0.35s ease;
+      }
+
+      #startup-splash.is-hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .splash-card {
+        width: min(100%, 560px);
+        background: rgba(9, 12, 18, 0.72);
+        border: 1px solid var(--splash-line);
+        border-radius: 22px;
+        padding: 28px 26px 18px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+        backdrop-filter: blur(3px);
+      }
+
+      .splash-label {
+        margin: 0 0 18px;
+        font-size: 0.72rem;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.82);
+        font-weight: 700;
+      }
+
+      .splash-title {
+        margin: 0;
+        font-size: clamp(2.8rem, 10vw, 5.2rem);
+        line-height: 0.88;
+        letter-spacing: -0.06em;
+        font-weight: 800;
+        color: #f6f7f8;
+      }
+
+      .splash-copy {
+        margin: 18px 0 20px;
+        max-width: 420px;
+        color: var(--splash-muted);
+        font-size: 1.02rem;
+        line-height: 1.5;
+      }
+
+      .splash-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.78rem;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.82);
+        font-weight: 700;
+      }
+
+      .splash-brand::before {
+        content: "";
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, rgba(255,255,255,0.85), rgba(214,223,231,0.28));
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.18);
+      }
+
+      .progress-wrap {
+        margin-top: 20px;
+        width: 100%;
+        height: 7px;
+        border-radius: 999px;
+        overflow: hidden;
+        background: rgba(255,255,255,0.12);
+        border: 1px solid rgba(255,255,255,0.08);
+      }
+
+      .progress-bar {
+        display: block;
+        height: 100%;
+        width: 18%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, rgba(255,255,255,0.9), rgba(214,223,231,0.66));
+        box-shadow: 0 0 18px rgba(255,255,255,0.2);
+        animation: splash-load 2.2s ease-in-out infinite alternate;
+      }
+
+      @keyframes splash-load {
+        0% { width: 16%; opacity: 0.8; }
+        50% { width: 62%; opacity: 1; }
+        100% { width: 100%; opacity: 1; }
+      }
+
+      @media (max-width: 480px) {
+        .splash-card {
+          padding: 24px 20px 16px;
+          border-radius: 18px;
+        }
+
+        .splash-label {
+          letter-spacing: 0.16em;
+        }
+
+        .splash-copy {
+          font-size: 0.92rem;
+        }
+      }
+    </style>
+    <script type="module" crossorigin src="/assets/index-BCaN1ow8.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-CJCgVQE_.css">
   </head>
   <body>
-    <div id="startup-splash" role="img" aria-label="Gotham au lever du jour">
-      <div>
-        <p>TIME MANAGER</p>
-        <h1>GOTHAM</h1>
+    <div id="startup-splash" role="img" aria-label="Écran de chargement Time Manager">
+      <div class="splash-card">
+        <p class="splash-label">GOTHAM CITY • OPERATIONS</p>
+        <h1 class="splash-title">Chaque minute compte.</h1>
+        <p class="splash-copy">Un espace de travail simple pour suivre vos horaires et garder le rythme de vos équipes.</p>
+        <div class="splash-brand">GOTHAM CITY</div>
+        <div class="progress-wrap" aria-label="Chargement en cours">
+          <span class="progress-bar"></span>
+        </div>
       </div>
     </div>
     <div id="app"></div>
-      <script src="cordova.js"></script>
+    <script src="cordova.js"></script>
   </body>
 </html>

@@ -24,17 +24,37 @@ defmodule TimeManagerWeb.UserControllerTest do
       assert json_response(conn, 401)["error"] == "Authentication required"
     end
 
-    test "lists all users for authenticated users", %{conn: conn} do
-      user = user_fixture()
-      conn = auth_conn(conn, user)
+    test "employee sees only themselves", %{conn: conn} do
+      employee = user_fixture(%{email: "employee@example.com", username: "employee"})
+      another = user_fixture(%{email: "other@example.com", username: "other"})
+      conn = auth_conn(conn, employee)
 
       conn = get(conn, ~p"/api/users")
       users = json_response(conn, 200)["data"]
 
-      assert Enum.any?(users, fn item ->
-               item["id"] == user.id and item["email"] == user.email and
-                 item["username"] == user.username
-             end)
+      assert Enum.map(users, & &1["id"]) == [employee.id]
+      refute Enum.any?(users, &(&1["id"] == another.id))
+    end
+
+    test "manager sees only team members", %{conn: conn} do
+      manager = user_fixture(%{email: "manager@example.com", username: "manager", role: "manager"})
+      employee = user_fixture(%{email: "team-member@example.com", username: "team-member"})
+      outsider = user_fixture(%{email: "outsider@example.com", username: "outsider"})
+
+      {:ok, team} =
+        TimeManager.Teams.create_team(%{"name" => "Alpha Team", "manager_id" => manager.id})
+
+      {:ok, _} = TimeManager.Teams.add_member(team.id, manager.id)
+      {:ok, _} = TimeManager.Teams.add_member(team.id, employee.id)
+
+      conn = auth_conn(conn, manager)
+      conn = get(conn, ~p"/api/users")
+      users = json_response(conn, 200)["data"]
+
+      ids = Enum.map(users, & &1["id"])
+      assert manager.id in ids
+      assert employee.id in ids
+      refute outsider.id in ids
     end
   end
 
